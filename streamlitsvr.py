@@ -10,8 +10,7 @@ Original file is located at
 import streamlit as st
 import pandas as pd
 import numpy as np
-from sklearn.model_selection import GridSearchCV, KFold, train_test_split
-from sklearn.svm import SVR
+from sklearn.model_selection import GridSearchCV, train_test_split
 from sklearn.preprocessing import StandardScaler, OneHotEncoder
 from sklearn.compose import ColumnTransformer
 from sklearn.pipeline import Pipeline
@@ -22,6 +21,14 @@ import warnings
 
 # Mengabaikan warning untuk tampilan yang lebih bersih, tapi tampilkan jika kritis
 warnings.filterwarnings('ignore')
+
+# --- Kompatibilitas Versi scikit-learn untuk KFold ---
+try:
+    from sklearn.model_selection import KFold
+except ImportError:
+    # Fallback untuk versi lama scikit-learn (< 0.20)
+    from sklearn.cross_validation import KFold
+    st.warning("Menggunakan versi scikit-learn lama. Disarankan update ke versi 0.20+ untuk performa terbaik.")
 
 # --- DEFINISI FUNGSI DARI svr_penjualan_komputer.py (Disesuaikan) ---
 
