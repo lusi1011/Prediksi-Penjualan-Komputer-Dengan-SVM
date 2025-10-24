@@ -8,6 +8,10 @@ Original file is located at
 """
 
 import streamlit as st
+import pandas as pd
 
 st.title("Hello World")
 st.write("Welcome to Prediksi Penjualan Komputer dengan SVM")
+
+df = pd.read_csv('SuperStore_Sales_Dataset.csv')
+print(df.head())
