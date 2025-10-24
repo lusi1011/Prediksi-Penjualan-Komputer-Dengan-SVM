@@ -15,3 +15,4 @@ st.write("Welcome to Prediksi Penjualan Komputer dengan SVM")
 
 df = pd.read_csv('SuperStore_Sales_Dataset.csv')
 print(df.head())
+edited_df = st.data_editor(df.head(), caption="Editable Table Example")
