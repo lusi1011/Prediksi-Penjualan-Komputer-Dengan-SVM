@@ -14,5 +14,8 @@ st.title("Hello World")
 st.write("Welcome to Prediksi Penjualan Komputer dengan SVM")
 
 df = pd.read_csv('SuperStore_Sales_Dataset.csv')
+df.fillna({'Returns': df['Returns'].mean(), 'jumlah': 0}, inplace=True)
+df.fillna({'ind1': df['Returns'].mean(), 'jumlah': 0}, inplace=True)
+df.fillna({'ind2': df['Returns'].mean(), 'jumlah': 0}, inplace=True)
 df_model = (df["Category"] == "Technology") & (df["Sub-Category"] != "Phones")
 st.write(df[df_model])
