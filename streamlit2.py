@@ -15,4 +15,4 @@ st.write("Welcome to Prediksi Penjualan Komputer dengan SVM")
 
 df = pd.read_csv('SuperStore_Sales_Dataset.csv')
 df_model = (df["Category"] == "Technology") & (df["Sub-Category"] != "Phones")
-st.write(df_model)
+st.write(df[df_model])
