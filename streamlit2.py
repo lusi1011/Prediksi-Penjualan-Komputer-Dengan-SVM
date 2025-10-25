@@ -14,5 +14,5 @@ st.title("Hello World")
 st.write("Welcome to Prediksi Penjualan Komputer dengan SVM")
 
 df = pd.read_csv('SuperStore_Sales_Dataset.csv')
-filter = df["Category"] == "Technology"
+filter = df['Category'] == 'Technology'
 st.write(filter)
