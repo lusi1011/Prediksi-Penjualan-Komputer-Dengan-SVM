@@ -14,7 +14,6 @@ st.title("Hello World")
 st.write("Welcome to Prediksi Penjualan Komputer dengan SVM")
 
 df = pd.read_csv('SuperStore_Sales_Dataset.csv')
-df.columns = df.columns.str.replace('[+O6G3A1:R6]', '', regex=True).str.strip()
-st.write(df.info())
+df.rename(columns={'Row ID+O6G3A1:R6': 'Row ID'})
 df_filter = (df["Category"] == "Technology") & (df["Sub-Category"] != "Phones")
 st.write(df[df_filter])
