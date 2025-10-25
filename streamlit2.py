@@ -14,4 +14,5 @@ st.title("Hello World")
 st.write("Welcome to Prediksi Penjualan Komputer dengan SVM")
 
 df = pd.read_csv('SuperStore_Sales_Dataset.csv')
-st.dataframe(df)
+df_filter = (df["Sub-Category"] != "Phones")
+st.dataframe(df_filter)
