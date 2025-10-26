@@ -15,5 +15,6 @@ st.write("Welcome to Prediksi Penjualan Komputer dengan SVM")
 
 df = pd.read_csv('SuperStore_Sales_Dataset.csv')
 df_rename = df.rename(columns={'Row ID+O6G3A1:R6': 'Row ID'})
-df_filter = df_rename[df_rename['Category'] == 'Technology']
-st.write(df_filter)
+df_tech = df_rename[df_rename['Category'] == 'Technology']
+df_phone = df_tech[df_tech['Sub-Category'] != 'Phones']
+st.write(df_phone)
