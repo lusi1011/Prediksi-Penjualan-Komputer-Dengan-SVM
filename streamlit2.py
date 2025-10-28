@@ -12,8 +12,6 @@ warnings.filterwarnings('ignore')
 
 import streamlit as st
 import pandas as pd
-import matplotlib.pyplot as plt
-import seaborn as sns
 
 st.title("Hello World")
 st.write("Welcome to Prediksi Penjualan Komputer dengan SVM")
@@ -23,11 +21,4 @@ df_rename = df.rename(columns={'Row ID+O6G3A1:R6': 'Row ID'})
 df_tech = df_rename[df_rename['Category'] == 'Technology']
 df_com = df_tech[df_tech['Sub-Category'] != 'Phones']
 st.write(df_com)
-
-# Distribution of Sales
-plt.figure(figsize=(10, 6))
-sns.histplot(df_com['Sales'], bins=50, kde=True)
-plt.title('Distribution of Sales')
-plt.xlabel('Sales')
-plt.ylabel('Frequency')
-st.pyplot(plt)
+st.bar_chart(df_com)
