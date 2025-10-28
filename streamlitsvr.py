@@ -128,11 +128,8 @@ SVR memprediksi nilai *Sales* secara kontinu. Untuk menginterpretasikan sebagai 
 st.header("2. Visualisasi Hyperplane Regresi (Altair)")
 
 # Scatter plot untuk data aktual (Test Set)
-scatter = alt.Chart(df_test).mark_point(opacity=0.5, size=20, color='gray').encode(
-    x=alt.X('Profit', title='Keuntungan (Profit)'),
-    y=alt.Y('Sales_Actual', title='Penjualan Aktual (Sales)'),
-    tooltip=['Profit', 'Sales_Actual']
-)
+# scatter = alt.Chart(df_test).mark_point(...).encode(...) 
+# Non-aktifkan Scatter sementara.
 
 # Line chart untuk prediksi SVR (Hyperplane)
 line = alt.Chart(df_predictions).mark_line(size=3).encode(
@@ -142,16 +139,13 @@ line = alt.Chart(df_predictions).mark_line(size=3).encode(
     tooltip=['Kernel', 'Profit', 'Sales_Prediction']
 )
 
-# Menggabungkan dan Facet (memecah grafik berdasarkan kernel)
-chart = (scatter + line).facet(
+# Hanya menggunakan Line dan Facet
+chart = line.facet( # Hapus `(scatter + line)`
     column=alt.Column('Kernel', header=alt.Header(titleOrient="bottom", labelOrient="bottom")),
     columns=2
-).resolve_scale(
-    y='independent',  # Y-axis independen untuk melihat bentuk fit lebih jelas
-    x='independent'
 ).properties(
     title="Perbandingan Hyperplane SVR Berdasarkan Kernel (Sales vs. Profit)"
-).interactive() # Memungkinkan zoom dan pan
+) # Hapus .resolve_scale dan .interactive()
 
 st.altair_chart(chart, use_container_width=True)
 
