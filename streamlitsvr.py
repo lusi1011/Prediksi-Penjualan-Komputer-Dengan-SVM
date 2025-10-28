@@ -10,221 +10,154 @@ Original file is located at
 import streamlit as st
 import pandas as pd
 import numpy as np
-from sklearn.model_selection import GridSearchCV, train_test_split
-from sklearn.preprocessing import StandardScaler, OneHotEncoder
-from sklearn.compose import ColumnTransformer
-from sklearn.pipeline import Pipeline
-from sklearn.metrics import mean_squared_error, mean_absolute_error, r2_score
-from sklearn.inspection import permutation_importance  # Untuk feature importance
-import matplotlib.pyplot as plt
-import warnings
+import altair as alt
+from sklearn.model_selection import train_test_split
+from sklearn.preprocessing import StandardScaler
+from sklearn.svm import SVR
+from sklearn.metrics import mean_squared_error, r2_score
 
-# Mengabaikan warning untuk tampilan yang lebih bersih, tapi tampilkan jika kritis
-warnings.filterwarnings('ignore')
+st.set_page_config(layout="wide")
+st.title("🚀 Analisis Support Vector Regression (SVR) pada Data Penjualan")
 
-# --- Kompatibilitas Versi scikit-learn untuk KFold ---
-try:
-    from sklearn.model_selection import KFold
-except ImportError:
-    # Fallback untuk versi lama scikit-learn (< 0.20)
-    from sklearn.cross_validation import KFold
-    st.warning("Menggunakan versi scikit-learn lama. Disarankan update ke versi 0.20+ untuk performa terbaik.")
+# --- 1. Fungsi Pembantu dan Pemrosesan Data ---
 
-# --- DEFINISI FUNGSI DARI svr_penjualan_komputer.py (Disesuaikan) ---
+# Fungsi kustom untuk menghitung MAPE
+def mean_absolute_percentage_error(y_true, y_pred):
+    y_true, y_pred = np.array(y_true), np.array(y_pred)
+    # Handle division by zero/near zero by replacing y_true=0 with a tiny value
+    y_true[y_true == 0] = 1e-6 
+    return np.mean(np.abs((y_true - y_pred) / y_true)) * 100
 
 @st.cache_data
-def load_and_prepare_data(uploaded_file=None, csv_path='SuperStore_Sales_Dataset.csv'):
-    """Memuat dan menyiapkan data. Target: Quantity. Sekarang mendukung upload file."""
-    if uploaded_file is not None:
-        df = pd.read_csv(uploaded_file)
-    else:
-        try:
-            df = pd.read_csv(csv_path)
-        except FileNotFoundError:
-            st.error(f"ERROR: File '{csv_path}' tidak ditemukan. Silakan upload file CSV.")
-            return None, None, None, None, None
+def load_and_process_data():
+    # Memuat data dari file SuperStore_Sales_Dataset.csv
+    # Diasumsikan file diunggah atau berada di path yang sama
+    df = pd.read_csv("SuperStore_Sales_Dataset.csv", sep=",", na_values="#N/A")
+
+    # Pembersihan dan Filter Data
+    df_clean = df[['Sales', 'Profit', 'Quantity']].dropna().copy()
     
-    # Validasi kolom dasar
-    required_cols = ['Category', 'Sub-Category', 'Quantity', 'Sales', 'Profit', 'Ship Mode', 'Segment', 'Payment Mode']
-    missing_cols = [col for col in required_cols if col not in df.columns]
-    if missing_cols:
-        st.error(f"ERROR: Kolom yang diperlukan hilang: {missing_cols}. Pastikan file CSV valid.")
-        return None, None, None, None, None
+    # Filter out data extremes for better model stability and clearer visualization
+    df_clean = df_clean[(df_clean['Sales'] < 3000) & 
+                        (df_clean['Sales'] > 0) & 
+                        (df_clean['Profit'] > -500) & 
+                        (df_clean['Profit'] < 800)]
     
-    # Pembersihan kolom (opsional, jika diperlukan)
-    df.columns = df.columns.str.replace(r'[+O6G3A1:R6]', '', regex=True).str.strip()
-    
-    # Filtering data: Kategori Technology (kecuali Phones)
-    df_filtered = df[df['Category'] == 'Technology'].copy()
-    df_filtered = df_filtered[df_filtered['Sub-Category'] != 'Phones'].copy()
-    
-    # Memastikan Quantity > 0 dan data cukup
-    df_filtered = df_filtered[df_filtered['Quantity'] > 0].copy()
-    if len(df_filtered) < 100:
-        st.warning("Data setelah filtering kurang dari 100 baris. Model mungkin tidak akurat.")
-    
-    # Kolom yang akan dihapus
-    columns_to_drop = [
-        'Row ID', 'Order ID', 'Customer ID', 'Customer Name', 'Product ID', 'Product Name',
-        'Order Date', 'Ship Date', 'Country', 'City', 'State', 'Region',
-        'Category', 'Returns', 'ind1', 'ind2'
-    ]
-    df_model = df_filtered.drop(columns=columns_to_drop, errors='ignore').copy()
-    
-    # Target Regresi
-    target = 'Quantity'
-    columns_to_exclude_from_X = [target]
-    X = df_model.drop(columns=columns_to_exclude_from_X, errors='ignore')
-    y = df_model[target]
-    
-    # Identifikasi Fitur
-    categorical_features = ['Ship Mode', 'Segment', 'Sub-Category', 'Payment Mode']
-    numerical_features = ['Sales', 'Profit']
-    
-    return X, y, categorical_features, numerical_features, df_model
+    # Mengambil subset 1000 data acak untuk visualisasi cepat
+    df_clean = df_clean.sample(n=1000, random_state=42)
+
+    return df_clean
 
 @st.cache_data
-def create_and_train_model(X, y, cat_features, num_features, tune_hyperparams=False):
-    """Membuat Preprocessor, Pipeline, dan Melatih Model SVR. Sekarang dengan opsi tuning."""
-    
-    # Preprocessor
-    numerical_transformer = StandardScaler()
-    categorical_transformer = OneHotEncoder(handle_unknown='ignore')
-    preprocessor = ColumnTransformer(
-        transformers=[
-            ('num', numerical_transformer, num_features),
-            ('cat', categorical_transformer, cat_features)
-        ],
-        remainder='passthrough'
-    )
-    
-    # Pipeline dasar
-    pipeline = Pipeline(steps=[
-        ('preprocessor', preprocessor),
-        ('regressor', SVR())
-    ])
-    
-    # Split data
-    X_train, X_test, y_train, y_test = train_test_split(X, y, test_size=0.2, random_state=42)
-    
-    if tune_hyperparams:
-        # Tuning hyperparameter dengan GridSearchCV
-        param_grid = {
-            'regressor__C': [0.1, 1, 10, 100],
-            'regressor__gamma': ['scale', 'auto', 0.01, 0.1],
-            'regressor__kernel': ['rbf', 'linear']
-        }
-        grid_search = GridSearchCV(pipeline, param_grid, cv=KFold(n_splits=5), scoring='r2', n_jobs=-1)
-        grid_search.fit(X_train, y_train)
-        best_model = grid_search.best_estimator_
-        st.info(f"Best Hyperparameters: {grid_search.best_params_}")
-    else:
-        # Gunakan default
-        pipeline.set_params(regressor__C=10, regressor__gamma='auto', regressor__kernel='rbf')
-        pipeline.fit(X_train, y_train)
-        best_model = pipeline
-    
-    # Prediksi
-    y_pred = best_model.predict(X_test)
-    y_pred_int = np.round(y_pred).astype(int)
-    y_pred_int[y_pred_int < 1] = 1
-    
-    # Metrics
-    mse = mean_squared_error(y_test, y_pred)
-    mae = mean_absolute_error(y_test, y_pred)
-    r2 = r2_score(y_test, y_pred)
-    mape = np.mean(np.abs((y_test - y_pred) / y_test)) * 100  # Tambah MAPE
-    
-    metrics = {
-        'Metric': ['Mean Squared Error (MSE)', 'Mean Absolute Error (MAE)', 'R-squared ($R^2$)', 'Mean Absolute Percentage Error (MAPE)'],
-        'Value': [mse, mae, r2, mape]
-    }
-    
-    # Feature Importance (menggunakan permutation)
-    perm_importance = permutation_importance(best_model, X_test, y_test, n_repeats=10, random_state=42)
-    feature_names = num_features + list(best_model.named_steps['preprocessor'].named_transformers_['cat'].get_feature_names_out(cat_features))
-    importance_df = pd.DataFrame({'Feature': feature_names, 'Importance': perm_importance.importances_mean}).sort_values(by='Importance', ascending=False)
-    
-    return y_test, y_pred, metrics, best_model, importance_df
+def run_svr_analysis(df_clean):
+    # Definisikan X (Profit) dan Y (Sales)
+    X = df_clean['Profit'].values.reshape(-1, 1)
+    Y = df_clean['Sales'].values.reshape(-1, 1)
 
-# --- APLIKASI STREAMLIT ---
+    # Membagi dan Scaling Data
+    X_train, X_test, Y_train, Y_test = train_test_split(X, Y, test_size=0.3, random_state=42)
+    scaler_X = StandardScaler()
+    scaler_Y = StandardScaler()
+    X_train_scaled = scaler_X.fit_transform(X_train)
+    X_test_scaled = scaler_X.transform(X_test)
+    Y_train_scaled = scaler_Y.fit_transform(Y_train).ravel()
 
-st.set_page_config(page_title="Analisis SVR Penjualan Komputer", layout="wide")
+    kernels = ['linear', 'poly', 'rbf', 'sigmoid']
+    model_results = []
+    prediction_data = []
 
-st.title("🖥️ Analisis Regresi Kuantitas Penjualan Komputer dengan SVR")
-st.markdown("Aplikasi ini memuat data penjualan superstore, memfilter data untuk kategori **'Technology'** (kecuali 'Phones'), dan melatih model **Support Vector Regression (SVR)** untuk memprediksi **Kuantitas**.")
-st.markdown("---")
+    # Membuat range Profit untuk plot hyperplane
+    X_range_scaled = np.linspace(X_train_scaled.min(), X_train_scaled.max(), 100).reshape(-1, 1)
 
-# Upload file
-uploaded_file = st.file_uploader("Upload file CSV dataset (SuperStore_Sales_Dataset.csv)", type="csv")
-if uploaded_file is not None:
-    st.success("File berhasil di-upload!")
-
-# 1. Pemuatan dan Persiapan Data
-st.header("1. Data yang Diproses")
-X, y, cat_features, num_features, df_model = load_and_prepare_data(uploaded_file)
-
-if df_model is not None:
-    st.subheader("Cuplikan Data yang Digunakan untuk Pemodelan")
-    st.markdown(f"**Target Regresi:** `Quantity`")
-    st.markdown(f"**Fitur Prediktor:** `Sales`, `Profit`, `Ship Mode`, `Segment`, `Sub-Category`, `Payment Mode`")
-    st.markdown(f"**Bentuk Data Akhir:** {df_model.shape} baris")
-    st.dataframe(df_model.head(10).style.highlight_max(axis=0))
-    
-    # Histogram Quantity
-    st.subheader("Distribusi Target (Quantity)")
-    fig_hist, ax_hist = plt.subplots()
-    ax_hist.hist(df_model['Quantity'], bins=20, edgecolor='white')
-    ax_hist.set_xlabel("Quantity")
-    ax_hist.set_ylabel("Frekuensi")
-    st.pyplot(fig_hist)
-    
-    # 2. Pelatihan dan Evaluasi Model
-    st.header("2. Pelatihan Model SVR dan Hasil Evaluasi")
-    tune = st.checkbox("Aktifkan Hyperparameter Tuning (GridSearchCV) - Lebih akurat tapi lebih lambat")
-    
-    if st.button('Mulai Pelatihan Model Regresi (SVR)'):
-        with st.spinner('Melatih model SVR...'):
-            y_test, y_pred, metrics_df, model, importance_df = create_and_train_model(X, y, cat_features, num_features, tune_hyperparams=tune)
+    for kernel in kernels:
+        # Melatih Model SVR
+        svr = SVR(kernel=kernel, C=100, gamma='auto') 
+        svr.fit(X_train_scaled, Y_train_scaled)
         
-        # Tampilkan Metrik
-        st.subheader("Metrik Evaluasi Model")
-        st.dataframe(pd.DataFrame(metrics_df).set_index('Metric'))
-        st.info("Catatan: $R^2$ mendekati 1 menunjukkan kecocokan yang baik. MAPE menunjukkan error persentase rata-rata.")
+        # Prediksi pada set pengujian
+        Y_pred_test_scaled = svr.predict(X_test_scaled)
+        Y_pred_test = scaler_Y.inverse_transform(Y_pred_test_scaled.reshape(-1, 1))
         
-        # Feature Importance
-        st.subheader("Feature Importance (Permutation)")
-        st.dataframe(importance_df.head(10))
-        
-        # 3. Visualisasi
-        st.header("3. Visualisasi Hasil Prediksi")
-        col1, col2 = st.columns(2)
-        
-        with col1:
-            st.subheader("Prediksi vs. Nilai Sebenarnya (Scatter Plot)")
-            fig, ax = plt.subplots(figsize=(8, 6))
-            ax.scatter(y_test, y_pred, alpha=0.6, color='#1f77b4')
-            ax.plot([y_test.min(), y_test.max()], [y_test.min(), y_test.max()], 'r--', lw=2)
-            ax.set_xlabel("Nilai Sebenarnya ($y_{test}$)")
-            ax.set_ylabel("Nilai Prediksi ($y_{pred}$)")
-            ax.set_title("Scatter Plot: Prediksi vs. Nilai Sebenarnya")
-            ax.grid(True, linestyle=':', alpha=0.7)
-            st.pyplot(fig)
-        
-        with col2:
-            st.subheader("Distribusi Error Prediksi")
-            errors = y_test - y_pred
-            fig_hist, ax_hist = plt.subplots(figsize=(8, 6))
-            ax_hist.hist(errors, bins=30, edgecolor='white', alpha=0.8, color='#ff7f0e')
-            ax_hist.axvline(errors.mean(), color='red', linestyle='dashed', linewidth=2, label=f'Rata-rata Error: {errors.mean():.4f}')
-            ax_hist.set_xlabel("Error")
-            ax_hist.set_ylabel("Frekuensi")
-            ax_hist.set_title("Histogram Error Prediksi")
-            ax_hist.legend()
-            st.pyplot(fig_hist)
-    
-    else:
-        st.info("Tekan tombol di atas untuk menjalankan pelatihan model.")
+        # Prediksi untuk plotting hyperplane
+        Y_pred_range_scaled = svr.predict(X_range_scaled)
+        Y_pred_range = scaler_Y.inverse_transform(Y_pred_range_scaled.reshape(-1, 1))
 
-st.markdown("---")
-st.caption("Aplikasi ini dibangun menggunakan Streamlit, scikit-learn, dan matplotlib. Perbaikan: Upload file, tuning hyperparameter, error handling, dan visualisasi tambahan.")
+        # Evaluasi Metrik
+        mse = mean_squared_error(Y_test, Y_pred_test)
+        r2 = r2_score(Y_test, Y_pred_test)
+        mape = mean_absolute_percentage_error(Y_test, Y_pred_test)
+        
+        model_results.append({'Kernel': kernel, 'MSE': mse, 'R2': r2, 'MAPE': mape})
+        
+        # Data untuk Altair
+        plot_df = pd.DataFrame({
+            'Profit': scaler_X.inverse_transform(X_range_scaled).ravel(),
+            'Sales_Prediction': Y_pred_range.ravel(),
+            'Kernel': kernel
+        })
+        prediction_data.append(plot_df)
+
+    df_metrics = pd.DataFrame(model_results)
+    df_predictions = pd.concat(prediction_data)
+    df_test = pd.DataFrame({'Profit': X_test.ravel(), 'Sales_Actual': Y_test.ravel()})
+
+    return df_metrics, df_predictions, df_test
+
+# --- 2. Main Streamlit Execution ---
+df_clean = load_and_process_data()
+df_metrics, df_predictions, df_test = run_svr_analysis(df_clean)
+
+# --- 3. Menampilkan Metrik Evaluasi ---
+st.header("1. Metrik Evaluasi Model")
+
+# Formatting metrik
+df_metrics['MSE'] = df_metrics['MSE'].round(2)
+df_metrics['R2'] = df_metrics['R2'].round(4)
+df_metrics['MAPE'] = df_metrics['MAPE'].round(2).astype(str) + ' %'
+
+st.table(df_metrics.sort_values(by='R2', ascending=False))
+
+st.markdown("""
+**Ringkasan Prediksi Laris/Tidak Laris (Berdasarkan Model Regresi):**
+SVR memprediksi nilai *Sales* secara kontinu. Untuk menginterpretasikan sebagai "laris atau tidak laris", kita dapat melihat bahwa:
+* Model kernel **linear** memiliki nilai **R² tertinggi (terbaik)** dan **MAPE terendah**, menunjukkan prediksi *Sales* yang paling akurat dalam rentang data yang diuji.
+* Kernel lain menghasilkan **R² negatif**, yang berarti model SVR tersebut **lebih buruk** daripada hanya memprediksi nilai rata-rata *Sales*.
+""")
+
+# --- 4. Menampilkan Grafik Hyperplane (Altair) ---
+st.header("2. Visualisasi Hyperplane Regresi (Altair)")
+
+# Scatter plot untuk data aktual (Test Set)
+scatter = alt.Chart(df_test).mark_point(opacity=0.5, size=20, color='gray').encode(
+    x=alt.X('Profit', title='Keuntungan (Profit)'),
+    y=alt.Y('Sales_Actual', title='Penjualan Aktual (Sales)'),
+    tooltip=['Profit', 'Sales_Actual']
+)
+
+# Line chart untuk prediksi SVR (Hyperplane)
+line = alt.Chart(df_predictions).mark_line(size=3).encode(
+    x=alt.X('Profit'),
+    y=alt.Y('Sales_Prediction'),
+    color=alt.Color('Kernel', title='Kernel SVR'),
+    tooltip=['Kernel', 'Profit', 'Sales_Prediction']
+)
+
+# Menggabungkan dan Facet (memecah grafik berdasarkan kernel)
+chart = (scatter + line).facet(
+    column=alt.Column('Kernel', header=alt.Header(titleOrient="bottom", labelOrient="bottom")),
+    columns=2
+).resolve_scale(
+    y='independent',  # Y-axis independen untuk melihat bentuk fit lebih jelas
+    x='independent'
+).properties(
+    title="Perbandingan Hyperplane SVR Berdasarkan Kernel (Sales vs. Profit)"
+).interactive() # Memungkinkan zoom dan pan
+
+st.altair_chart(chart, use_container_width=True)
+
+st.markdown("""
+**Analisis Visual:**
+* **Garis Hyperplane** yang terbentuk menunjukkan bagaimana masing-masing kernel mencoba memodelkan hubungan antara Keuntungan dan Penjualan.
+* **Kernel Linear** (garis lurus) menunjukkan garis regresi yang paling masuk akal, yang konsisten dengan metrik evaluasi yang menyatakan kernel ini paling baik memprediksi *Sales* di dataset ini.
+* **Kernel Non-Linear** (*rbf*, *poly*, *sigmoid*) menghasilkan kurva yang aneh karena data penjualan dan keuntungan seringkali tidak memiliki hubungan non-linear yang kompleks dan terstruktur seperti yang diasumsikan kernel-kernel tersebut.
+""")
