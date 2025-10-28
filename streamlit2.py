@@ -23,22 +23,19 @@ df_tech = df_rename[df_rename['Category'] == 'Technology']
 df_com = df_tech[df_tech['Sub-Category'] != 'Phones']
 st.write(df_com)
 
-# Mendefinisikan base chart dari data
 base = alt.Chart(df_com).properties(
-    title='Distribution of Sales (Altair)'
+    title='Distribution of Profit'
 )
 
-# 2a. Membuat Histogram (Bar Chart dengan Binning)
-# x='Sales' dengan bin=True akan membuat Altair menghitung bins (frekuensi)
 histogram = base.mark_bar().encode(
     # Binning data di sumbu X
-    x=alt.X('Sales', bin=True, title='Sales'),
+    x=alt.X('Profit', bin=True, title='Profit'),
     
     # Menghitung frekuensi data di sumbu Y (default aggregation count)
     y=alt.Y('count()', title='Frequency'),
     
     # Tooltip untuk interaktivitas
-    tooltip=[alt.Tooltip('Sales', bin=True), 'count()']
+    tooltip=[alt.Tooltip('Profit', bin=True), 'count()']
 ).properties(
     width=600,
     height=400
