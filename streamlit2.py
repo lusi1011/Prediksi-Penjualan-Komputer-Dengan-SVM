@@ -12,7 +12,7 @@ warnings.filterwarnings('ignore')
 
 import streamlit as st
 import pandas as pd
-import plotly.express as px
+import altair as alt
 
 st.title("Hello World")
 st.write("Welcome to Prediksi Penjualan Komputer dengan SVM")
@@ -23,22 +23,30 @@ df_tech = df_rename[df_rename['Category'] == 'Technology']
 df_com = df_tech[df_tech['Sub-Category'] != 'Phones']
 st.write(df_com)
 
-# Plotly Express secara otomatis membuat histogram dari kolom 'Sales'
-fig = px.histogram(
-    df_com,
-    x='Profit',
-    nbins=50, # Menentukan jumlah bins (mirip dengan bins=50 di Matplotlib)
-    title='Distribution of Profit (Plotly)',
+# Mendefinisikan base chart dari data
+base = alt.Chart(df_com).properties(
+    title='Distribution of Sales (Altair)'
 )
 
-# Menambahkan KDE (Density) mirip seperti kde=True
-# Karena Plotly interaktif, kita bisa menyesuaikan tata letaknya
-fig.update_traces(opacity=0.75)
-fig.update_layout(
-    xaxis_title='Profit',
-    yaxis_title='Frequency',
-    bargap=0.05 # Sedikit spasi antar bar
+# 2a. Membuat Histogram (Bar Chart dengan Binning)
+# x='Sales' dengan bin=True akan membuat Altair menghitung bins (frekuensi)
+histogram = base.mark_bar().encode(
+    # Binning data di sumbu X
+    x=alt.X('Sales', bin=True, title='Sales'),
+    
+    # Menghitung frekuensi data di sumbu Y (default aggregation count)
+    y=alt.Y('count()', title='Frequency'),
+    
+    # Tooltip untuk interaktivitas
+    tooltip=[alt.Tooltip('Sales', bin=True), 'count()']
+).properties(
+    width=600,
+    height=400
 )
+
+# 2b. Opsi: Menambahkan KDE/Density Curve (sebagai garis) - Opsional, lebih rumit di Altair
+# Untuk membuat KDE murni, Altair memerlukan transformasi density eksplisit 
+# atau library tambahan, tetapi untuk visualisasi distribusi dasar, histogram sudah cukup.
 
 # --- 3. Menampilkan Grafik di Streamlit ---
-st.plotly_chart(fig, use_container_width=True)
+st.altair_chart(histogram, use_container_width=True)
