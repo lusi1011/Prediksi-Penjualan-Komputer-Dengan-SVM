@@ -45,5 +45,22 @@ histogram = base.mark_bar().encode(
 # Untuk membuat KDE murni, Altair memerlukan transformasi density eksplisit 
 # atau library tambahan, tetapi untuk visualisasi distribusi dasar, histogram sudah cukup.
 
-# --- 3. Menampilkan Grafik di Streamlit ---
 st.altair_chart(histogram, use_container_width=True)
+
+st.header("Heatmap Korelasi (Visualisasi Hubungan Data Numerik)")
+
+# 1. Menghitung Matriks Korelasi (Membutuhkan Pandas)
+corr_matrix = df_com[['Sales', 'Quantity', 'Profit']].corr().stack().reset_index()
+corr_matrix.columns = ['Variable 1', 'Variable 2', 'Correlation']
+
+# 2. Membuat Heatmap dengan Altair
+heatmap = alt.Chart(corr_matrix).mark_rect().encode(
+    x='Variable 1:O',
+    y='Variable 2:O',
+    color=alt.Color('Correlation:Q', scale=alt.Scale(range='diverging')), # Skala warna
+    tooltip=['Variable 1', 'Variable 2', alt.Tooltip('Correlation', format=".2f")]
+).properties(
+    title='Korelasi antara Sales, Quantity, dan Profit'
+)
+
+st.altair_chart(heatmap, use_container_width=True)
