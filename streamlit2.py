@@ -21,4 +21,27 @@ df_rename = df.rename(columns={'Row ID+O6G3A1:R6': 'Row ID'})
 df_tech = df_rename[df_rename['Category'] == 'Technology']
 df_com = df_tech[df_tech['Sub-Category'] != 'Phones']
 st.write(df_com)
-st.bar_chart(df_com)
+
+import streamlit as st
+import pandas as pd
+import plotly.express as px
+
+# Plotly Express secara otomatis membuat histogram dari kolom 'Sales'
+fig = px.histogram(
+    df_com,
+    x='Profit',
+    nbins=50, # Menentukan jumlah bins (mirip dengan bins=50 di Matplotlib)
+    title='Distribution of Profit (Plotly)',
+)
+
+# Menambahkan KDE (Density) mirip seperti kde=True
+# Karena Plotly interaktif, kita bisa menyesuaikan tata letaknya
+fig.update_traces(opacity=0.75)
+fig.update_layout(
+    xaxis_title='Profit',
+    yaxis_title='Frequency',
+    bargap=0.05 # Sedikit spasi antar bar
+)
+
+# --- 3. Menampilkan Grafik di Streamlit ---
+st.plotly_chart(fig, use_container_width=True)
