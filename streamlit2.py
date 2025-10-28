@@ -12,6 +12,7 @@ warnings.filterwarnings('ignore')
 
 import streamlit as st
 import pandas as pd
+import plotly.express as px
 
 st.title("Hello World")
 st.write("Welcome to Prediksi Penjualan Komputer dengan SVM")
@@ -21,10 +22,6 @@ df_rename = df.rename(columns={'Row ID+O6G3A1:R6': 'Row ID'})
 df_tech = df_rename[df_rename['Category'] == 'Technology']
 df_com = df_tech[df_tech['Sub-Category'] != 'Phones']
 st.write(df_com)
-
-import streamlit as st
-import pandas as pd
-import plotly.express as px
 
 # Plotly Express secara otomatis membuat histogram dari kolom 'Sales'
 fig = px.histogram(
