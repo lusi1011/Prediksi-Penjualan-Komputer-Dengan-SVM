@@ -33,12 +33,16 @@ def mean_absolute_percentage_error(y_true, y_pred):
 def load_and_process_data():
     # Pastikan file CSV ada di root directory repository Streamlit Cloud Anda
     try:
-        df = pd.read_csv("SuperStore_Sales_Dataset.csv", sep=",", na_values="#N/A")
+        df = pd.read_csv('SuperStore_Sales_Dataset.csv')
+        df_rename = df.rename(columns={'Row ID+O6G3A1:R6': 'Row ID'})
+        df_tech = df_rename[df_rename['Category'] == 'Technology']
+        df_com = df_tech[df_tech['Sub-Category'] != 'Phones']
+        st.write(df_com)
     except FileNotFoundError:
         st.error("File 'SuperStore_Sales_Dataset.csv' tidak ditemukan. Pastikan file tersebut ada di repository Anda.")
         return None
         
-    df_clean = df[['Sales', 'Profit', 'Quantity']].dropna().copy()
+    df_clean = df_com[['Sales', 'Profit', 'Quantity']].dropna().copy()
     
     # Filter data ekstrem (sama seperti sebelumnya)
     df_clean = df_clean[(df_clean['Sales'] < 3000) & 
