@@ -51,7 +51,6 @@ def load_and_process_data():
                         (df_clean['Profit'] < 800)]
     
     # Mengambil subset untuk efisiensi komputasi SVR
-    # 3000 sample sudah cukup banyak, 2000 mungkin lebih cepat di Streamlit Cloud
     return df_clean.sample(n=250, random_state=42) 
 
 @st.cache_data
@@ -85,14 +84,21 @@ def run_svr_analysis(df_clean):
     df_test_sample = pd.DataFrame({'Profit': X_test.ravel(), 'Sales': Y_test.ravel()})
     df_test_sample = df_test_sample.sample(n=50, random_state=42).copy() # HANYA 50 TITIK!
     df_test_sample['Type'] = 'Actual'
-
+    
     for kernel in kernels:
-        # Gunakan parameter yang lebih ringan untuk performa lebih baik
-        if kernel == 'poly':
-            # Derajat 3 (default) bisa jadi lambat, mungkin 2 lebih baik
-            svr = SVR(kernel=kernel, C=50, degree=2, gamma='auto') 
-        else:
-            svr = SVR(kernel=kernel, C=50, gamma='auto') 
+            if kernel == 'linear':
+                svr = SVR(kernel=kernel, C=10) # C lebih kecil untuk linear juga bisa dicoba
+            elif kernel == 'poly':
+                svr = SVR(kernel=kernel, C=50, degree=2, gamma='auto') 
+            elif kernel == 'rbf':
+                svr = SVR(kernel=kernel, C=50, gamma='auto') # gamma='auto' atau coba nilai spesifik seperti 0.1
+            elif kernel == 'sigmoid':
+                # --- PENYESUAIAN PENTING UNTUK SIGMOID ---
+                # Menurunkan C, dan menyesuaikan gamma serta coef0
+                # Nilai ini adalah titik awal, mungkin perlu tuning lebih lanjut
+                svr = SVR(kernel=kernel, C=1, gamma=0.01, coef0=0) 
+                # Atau bahkan mencoba gamma='scale' jika data sudah sangat terstandardisasi
+                # svr = SVR(kernel=kernel, C=1, gamma='scale', coef0=0)
             
         svr.fit(X_train_scaled, Y_train_scaled)
         
