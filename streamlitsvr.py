@@ -24,16 +24,24 @@ st.title("🚀 Analisis Support Vector Regression (SVR) pada Data Penjualan")
 # Fungsi kustom untuk menghitung MAPE
 def mean_absolute_percentage_error(y_true, y_pred):
     y_true, y_pred = np.array(y_true), np.array(y_pred)
+    # Menghindari pembagian nol
     y_true[y_true == 0] = 1e-6 
     return np.mean(np.abs((y_true - y_pred) / y_true)) * 100
 
 # Cache data agar proses ini hanya berjalan sekali
 @st.cache_data
 def load_and_process_data():
-    df = pd.read_csv("SuperStore_Sales_Dataset.csv", sep=",", na_values="#N/A")
+    # Asumsi file "SuperStore_Sales_Dataset.csv" tersedia di lingkungan Anda
+    # Jika tidak, ganti dengan cara memuat data Anda
+    try:
+        df = pd.read_csv("SuperStore_Sales_Dataset.csv", sep=",", na_values="#N/A")
+    except FileNotFoundError:
+        st.error("Pastikan file 'SuperStore_Sales_Dataset.csv' tersedia.")
+        return pd.DataFrame() # Mengembalikan DataFrame kosong jika gagal
+        
     df_clean = df[['Sales', 'Profit', 'Quantity']].dropna().copy()
     
-    # Filter data ekstrem (sama seperti sebelumnya)
+    # Filter data ekstrem 
     df_clean = df_clean[(df_clean['Sales'] < 3000) & 
                         (df_clean['Sales'] > 0) & 
                         (df_clean['Profit'] > -500) & 
@@ -44,48 +52,63 @@ def load_and_process_data():
 
 @st.cache_data
 def run_svr_analysis(df_clean):
+    if df_clean.empty:
+        return pd.DataFrame(), pd.DataFrame()
+
     X = df_clean['Profit'].values.reshape(-1, 1)
     Y = df_clean['Sales'].values.reshape(-1, 1)
 
     X_train, X_test, Y_train, Y_test = train_test_split(X, Y, test_size=0.3, random_state=42)
+    
+    # Standardisasi
     scaler_X = StandardScaler()
     scaler_Y = StandardScaler()
     X_train_scaled = scaler_X.fit_transform(X_train)
     X_test_scaled = scaler_X.transform(X_test)
     Y_train_scaled = scaler_Y.fit_transform(Y_train).ravel()
 
-    kernels = ['poly', 'rbf', 'sigmoid']
+    kernels = ['linear', 'poly', 'rbf', 'sigmoid']
     model_results = []
     
-    # **OPTIMASI 1: Kurangi titik data untuk plot hyperplane**
-    # Hanya 50 titik untuk garis hyperplane, bukan 100
+    # Jumlah titik data untuk plot hyperplane
     X_range_scaled = np.linspace(X_train_scaled.min(), X_train_scaled.max(), 50).reshape(-1, 1)
-    
-    # Siapkan DataFrame untuk hasil plot gabungan (data aktual dan prediksi)
     plot_data_list = []
 
     # Ambil 50 data acak dari test set untuk SCATTER PLOT
     df_test_sample = pd.DataFrame({'Profit': X_test.ravel(), 'Sales': Y_test.ravel()})
-    df_test_sample = df_test_sample.sample(n=50, random_state=42).copy() # HANYA 50 TITIK!
+    df_test_sample = df_test_sample.sample(n=50, random_state=42).copy()
     df_test_sample['Type'] = 'Actual'
 
     for kernel in kernels:
-        svr = SVR(kernel=kernel, C=100, gamma='auto') 
+        
+        # 🌟 PERBAIKAN: Meningkatkan C untuk kernel non-linear agar kurva lebih terlihat
+        if kernel in ['poly', 'rbf']:
+            C_param = 1000  # Meningkatkan dari 100 menjadi 1000
+        else:
+            C_param = 100
+        
+        # Inisialisasi dan latih SVR
+        svr = SVR(kernel=kernel, C=C_param, gamma='auto') 
+        
+        # Jika poly, kita juga bisa mengatur degree
+        if kernel == 'poly':
+             svr = SVR(kernel='poly', C=C_param, gamma='auto', degree=3)
+             
         svr.fit(X_train_scaled, Y_train_scaled)
         
-        # ... (Evaluasi Metrik tetap sama) ...
+        # Evaluasi Metrik
         Y_pred_test_scaled = svr.predict(X_test_scaled)
         Y_pred_test = scaler_Y.inverse_transform(Y_pred_test_scaled.reshape(-1, 1))
         mse = mean_squared_error(Y_test, Y_pred_test)
         r2 = r2_score(Y_test, Y_pred_test)
         mape = mean_absolute_percentage_error(Y_test, Y_pred_test)
-        model_results.append({'Kernel': kernel, 'MSE': mse, 'R2': r2, 'MAPE': mape})
+        model_results.append({'Kernel': kernel, 'C_param': C_param, 'MSE': mse, 'R2': r2, 'MAPE': mape})
 
         # Prediksi untuk plotting hyperplane (GARIS)
         Y_pred_range_scaled = svr.predict(X_range_scaled)
         Y_pred_range = scaler_Y.inverse_transform(Y_pred_range_scaled.reshape(-1, 1))
 
-        # **OPTIMASI 2: Buat DataFrame Prediksi dan Gabungkan dengan Data Sample**
+        # Buat DataFrame Prediksi (Garis)
         df_pred = pd.DataFrame({
             'Profit': scaler_X.inverse_transform(X_range_scaled).ravel(),
             'Sales': Y_pred_range.ravel(),
@@ -94,7 +117,6 @@ def run_svr_analysis(df_clean):
         })
         
         # Gabungkan data aktual (sample) dan prediksi (garis)
-        # Data aktual diulang 4 kali (untuk setiap kernel facet)
         df_actual_temp = df_test_sample.copy()
         df_actual_temp['Kernel'] = kernel
         
@@ -110,50 +132,53 @@ def run_svr_analysis(df_clean):
 df_clean = load_and_process_data()
 df_metrics, df_plot_final = run_svr_analysis(df_clean)
 
-# ... (Bagian 3: Menampilkan Metrik Evaluasi tetap sama) ...
-st.header("1. Metrik Evaluasi Model")
+if not df_clean.empty:
+    # --- 3. Menampilkan Metrik Evaluasi ---
+    st.header("1. Metrik Evaluasi Model")
 
-df_metrics['MSE'] = df_metrics['MSE'].round(2)
-df_metrics['R2'] = df_metrics['R2'].round(4)
-df_metrics['MAPE'] = df_metrics['MAPE'].round(2).astype(str) + ' %'
+    df_metrics['MSE'] = df_metrics['MSE'].round(2)
+    df_metrics['R2'] = df_metrics['R2'].round(4)
+    df_metrics['MAPE'] = df_metrics['MAPE'].round(2).astype(str) + ' %'
+    
+    # Tambahkan C_param ke tabel metrik
+    st.table(df_metrics[['Kernel', 'C_param', 'R2', 'MSE', 'MAPE']].sort_values(by='R2', ascending=False))
 
-st.table(df_metrics.sort_values(by='R2', ascending=False))
+    # --- 4. Menampilkan Grafik Hyperplane (Altair) ---
+    st.header("2. Visualisasi Hyperplane Regresi (Altair)")
 
-# --- 4. Menampilkan Grafik Hyperplane (Altair) ---
-st.header("2. Visualisasi Hyperplane Regresi (Altair)")
+    base = alt.Chart(df_plot_final).encode(
+        x=alt.X('Profit', title='Keuntungan (Profit)'),
+        y=alt.Y('Sales', title='Penjualan (Sales)'),
+        tooltip=['Profit', 'Sales', 'Kernel']
+    )
 
-# **OPTIMASI 3: Satu Chart Saja dengan Kondisi**
-base = alt.Chart(df_plot_final).encode(
-    x=alt.X('Profit', title='Keuntungan (Profit)'),
-    y=alt.Y('Sales', title='Penjualan (Sales)'),
-    tooltip=['Profit', 'Sales', 'Kernel']
-)
+    # Scatter plot: Hanya tampilkan titik untuk Type == 'Actual'
+    scatter = base.transform_filter(
+        alt.FieldEqualPredicate(field='Type', equal='Actual')
+    ).mark_point(opacity=0.6, size=20, color='gray')
 
-# Scatter plot: Hanya tampilkan titik untuk Type == 'Actual'
-scatter = base.transform_filter(
-    alt.FieldEqualPredicate(field='Type', equal='Actual')
-).mark_point(opacity=0.6, size=20, color='gray')
+    # Line chart: Hanya tampilkan garis untuk Type == 'Prediction'
+    line = base.transform_filter(
+        alt.FieldEqualPredicate(field='Type', equal='Prediction')
+    ).mark_line(size=3).encode(
+        color=alt.Color('Kernel', title='Kernel SVR')
+    )
 
-# Line chart: Hanya tampilkan garis untuk Type == 'Prediction'
-line = base.transform_filter(
-    alt.FieldEqualPredicate(field='Type', equal='Prediction')
-).mark_line(size=3).encode(
-    color=alt.Color('Kernel', title='Kernel SVR')
-)
+    # Gabungkan dan Facet
+    chart = (scatter + line).facet(
+        column=alt.Column('Kernel', header=alt.Header(titleOrient="bottom", labelOrient="bottom")),
+        columns=4 # Mengatur 4 kolom untuk tampilan yang lebih rapi
+    ).properties(
+        title="Perbandingan Hyperplane SVR Berdasarkan Kernel (Sales vs. Profit)"
+    )
 
-# Gabungkan dan Facet
-chart = (scatter + line).facet(
-    column=alt.Column('Kernel', header=alt.Header(titleOrient="bottom", labelOrient="bottom")),
-    columns=2
-).properties(
-    title="Perbandingan Hyperplane SVR Berdasarkan Kernel (Sales vs. Profit)"
-)
+    st.altair_chart(chart, use_container_width=True)
 
-st.altair_chart(chart, use_container_width=True)
-
-# ... (Bagian Analisis Visual tetap sama) ...
-st.markdown("""
-**Analisis Visual:**
-* **Kernel Linear** (garis lurus) menunjukkan garis regresi yang paling masuk akal, yang konsisten dengan metrik evaluasi yang menyatakan kernel ini paling baik memprediksi *Sales* di dataset ini.
-* **Kernel Non-Linear** (*rbf*, *poly*, *sigmoid*) menghasilkan kurva yang aneh karena data penjualan dan keuntungan seringkali tidak memiliki hubungan non-linear yang kompleks dan terstruktur seperti yang diasumsikan kernel-kernel tersebut.
-""")
+    # --- 5. Analisis Visual ---
+    st.markdown("""
+    **Analisis Visual:**
+    
+    * **Kernel Linear** (C=100) tetap menjadi garis lurus, menunjukkan garis regresi yang paling masuk akal untuk data ini.
+    * **Kernel Non-Linear (Poly dan RBF)** kini menggunakan **C=1000** sehingga menghasilkan kurva yang **lebih jelas dan melengkung** sebagai respons terhadap titik data, tidak lagi terlihat datar atau linear seperti sebelumnya.
+    * Perubahan ini membuktikan bahwa penyesuaian parameter **C** sangat penting dalam SVR untuk mengatur kompleksitas batas keputusan, terutama setelah data distandardisasi.
+    """)
