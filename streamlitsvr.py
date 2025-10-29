@@ -52,7 +52,7 @@ def load_and_process_data():
     
     # Mengambil subset untuk efisiensi komputasi SVR
     # 3000 sample sudah cukup banyak, 2000 mungkin lebih cepat di Streamlit Cloud
-    return df_clean.sample(n=2000, random_state=42) 
+    return df_clean.sample(n=250, random_state=42) 
 
 @st.cache_data
 def run_svr_analysis(df_clean):
