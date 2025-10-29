@@ -17,7 +17,7 @@ from sklearn.svm import SVR
 from sklearn.metrics import mean_squared_error, r2_score
 
 st.set_page_config(layout="wide")
-st.title("🚀 Analisis Support Vector Regression (SVR) pada Data Penjualan")
+st.title("Analisis Support Vector Regression (SVR) pada Data Penjualan")
 
 # --- 1. Fungsi Pembantu dan Pemrosesan Data ---
 
