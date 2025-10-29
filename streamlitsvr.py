@@ -54,7 +54,7 @@ def run_svr_analysis(df_clean):
     X_test_scaled = scaler_X.transform(X_test)
     Y_train_scaled = scaler_Y.fit_transform(Y_train).ravel()
 
-    kernels = ['linear', 'poly', 'rbf', 'sigmoid']
+    kernels = ['poly', 'rbf', 'sigmoid']
     model_results = []
     
     # **OPTIMASI 1: Kurangi titik data untuk plot hyperplane**
