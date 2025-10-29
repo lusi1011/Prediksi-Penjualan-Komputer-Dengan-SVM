@@ -60,7 +60,7 @@ def load_and_process_data():
     ]
     
     # **PERBAIKAN ERROR 1: Sampling yang Aman (Robust Sampling)**
-    n_samples = 400
+    n_samples = 250
     if len(df_clean) == 0:
         st.warning("Tidak ada data yang tersisa setelah filter. Coba ubah filter Anda.")
         return None
