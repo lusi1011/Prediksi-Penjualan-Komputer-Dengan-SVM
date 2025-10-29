@@ -131,7 +131,7 @@ def run_svr_analysis(df_clean):
             svr = SVR(kernel=kernel, C=50, gamma='auto')
         elif kernel == 'sigmoid':
             # --- PENYESUAIAN PENTING UNTUK SIGMOID (dijaga dari perbaikan sebelumnya) ---
-            svr = SVR(kernel=kernel, C=1, gamma='auto', coef0=0)
+            svr = SVR(kernel=kernel, C=1, gamma=0.01, coef0=0)
             
         svr.fit(X_train_scaled, Y_train_scaled)
         
