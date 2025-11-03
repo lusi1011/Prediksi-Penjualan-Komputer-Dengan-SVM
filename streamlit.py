@@ -84,7 +84,7 @@ def run_svr_analysis(df_clean):
 
     test_split_size = 0.3
     if len(df_clean) * test_split_size < 1:
-        test_split_size = 0.2
+        test_split_size = 0.1
         
     X_train, X_test, Y_train, Y_test = train_test_split(X, Y, test_size=test_split_size, random_state=42)
     
