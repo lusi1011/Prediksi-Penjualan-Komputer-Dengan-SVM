@@ -12,47 +12,72 @@ import pandas as pd
 import numpy as np
 import altair as alt
 from sklearn.model_selection import train_test_split
-from sklearn.preprocessing import StandardScaler
+from sklearn.preprocessing import RobustScaler
 from sklearn.svm import SVR
 from sklearn.metrics import mean_squared_error, r2_score
 
+# --- Konfigurasi Halaman ---
 st.set_page_config(layout="wide")
-st.title("🚀 Analisis Support Vector Regression (SVR) pada Data Penjualan")
+st.title("🚀 Analisis Support Vector Regression (SVR) pada Data Penjualan (Optimized)")
 
-# --- 1. Fungsi Pembantu dan Pemrosesan Data ---
-
-# Fungsi kustom untuk menghitung MAPE
+# --- Fungsi Pembantu ---
 def mean_absolute_percentage_error(y_true, y_pred):
     y_true, y_pred = np.array(y_true), np.array(y_pred)
     y_true[y_true == 0] = 1e-6
     return np.mean(np.abs((y_true - y_pred) / y_true)) * 100
 
-# Cache data agar proses ini hanya berjalan sekali
+# --- Memuat dan Memproses Data ---
+@st.cache_data
+def load_and_process_data():
+    try:
+        df = pd.read_csv('SuperStore_Sales_Dataset.csv')
+        df = df.rename(columns={'Row ID+O6G3A1:R6': 'Row ID'})
+    except FileNotFoundError:
+        st.error("❌ File 'SuperStore_Sales_Dataset.csv' tidak ditemukan.")
+        return None
+    except Exception as e:
+        st.error(f"⚠️ Error saat membaca CSV: {e}")
+        return None
+        
+    df_tech = df[df['Category'] == 'Technology']
+    df_com = df_tech[df_tech['Sub-Category'] != 'Phones']
+    df_clean = df_com[['Sales', 'Profit', 'Quantity']].dropna().copy()
+
+    st.info("Filter data: Sales 50–3000, Profit -500 s/d 800")
+    df_clean = df_clean[
+        (df_clean['Sales'] > 50) &
+        (df_clean['Sales'] < 3000) &
+        (df_clean['Profit'] > -500) &
+        (df_clean['Profit'] < 800)
+    ]
+
+    n_samples = min(len(df_clean), 250)
+    if len(df_clean) == 0:
+        st.warning("Tidak ada data setelah filter.")
+        return None
+    
+    return df_clean.sample(n=n_samples, random_state=42), df_com
+
+# --- Analisis SVR dengan Optimasi ---
 @st.cache_data
 def run_svr_analysis(df_clean):
-    if df_clean is None:
-        return pd.DataFrame(), pd.DataFrame()
-    
-    if len(df_clean) < 10:
-        st.warning("Data terlalu sedikit untuk analisis SVR setelah sampling.")
+    if df_clean is None or len(df_clean) < 10:
+        st.warning("Data terlalu sedikit untuk analisis.")
         return pd.DataFrame(), pd.DataFrame()
 
-    # --- FITUR TAMBAHAN: Profit^2 untuk memperkuat non-linearitas ---
-    st.info("Menggunakan fitur: Profit, Profit^2, dan Quantity untuk memprediksi Sales.")
+    # 🔹 Tambah fitur kuadratik
     df_clean = df_clean.copy()
     df_clean['Profit2'] = df_clean['Profit'] ** 2
+    st.info("Menggunakan fitur: Profit, Profit², Quantity")
 
     X = df_clean[['Profit', 'Profit2', 'Quantity']].values
     Y = df_clean['Sales'].values
 
-    # --- Split data ---
     X_train, X_test, Y_train, Y_test = train_test_split(X, Y, test_size=0.25, random_state=42)
 
-    # --- Gunakan RobustScaler agar tahan outlier ---
-    from sklearn.preprocessing import RobustScaler
+    # 🔹 RobustScaler tahan outlier
     scaler_X = RobustScaler()
     scaler_Y = RobustScaler()
-
     X_train_scaled = scaler_X.fit_transform(X_train)
     X_test_scaled = scaler_X.transform(X_test)
     Y_train_scaled = scaler_Y.fit_transform(Y_train.reshape(-1, 1)).ravel()
@@ -61,7 +86,7 @@ def run_svr_analysis(df_clean):
     model_results = []
     plot_data_list = []
 
-    # Rentang Profit untuk visualisasi
+    # 🔹 Untuk plotting
     profit_range_scaled = np.linspace(X_train_scaled[:, 0].min(), X_train_scaled[:, 0].max(), 60)
     profit2_range_scaled = profit_range_scaled ** 2
     quantity_mean_scaled = np.full(60, X_train_scaled[:, 2].mean())
@@ -74,7 +99,7 @@ def run_svr_analysis(df_clean):
         'Type': 'Actual'
     }).sample(min(50, len(X_test)), random_state=42)
 
-    # --- HYPERPARAMETER OPTIMISASI ---
+    # --- 🔧 Hyperparameter Optimisasi ---
     for kernel in kernels:
         if kernel == 'linear':
             svr = SVR(kernel=kernel, C=100, epsilon=0.05)
@@ -87,20 +112,21 @@ def run_svr_analysis(df_clean):
 
         svr.fit(X_train_scaled, Y_train_scaled)
 
-        # Prediksi
+        # Prediksi dan evaluasi
         Y_pred_scaled = svr.predict(X_test_scaled)
         Y_pred = scaler_Y.inverse_transform(Y_pred_scaled.reshape(-1, 1))
 
         mse = mean_squared_error(Y_test, Y_pred)
         r2 = r2_score(Y_test, Y_pred)
         mape = mean_absolute_percentage_error(Y_test, Y_pred)
-
         model_results.append({'Kernel': kernel, 'MSE': mse, 'R2': r2, 'MAPE': mape})
 
-        # --- Untuk plotting ---
+        # Data untuk grafik
         Y_pred_range_scaled = svr.predict(X_range_scaled)
         Y_pred_range = scaler_Y.inverse_transform(Y_pred_range_scaled.reshape(-1, 1))
-        profit_range_unscaled = scaler_X.inverse_transform(np.column_stack((profit_range_scaled, profit2_range_scaled, quantity_mean_scaled)))[:, 0]
+        profit_range_unscaled = scaler_X.inverse_transform(
+            np.column_stack((profit_range_scaled, profit2_range_scaled, quantity_mean_scaled))
+        )[:, 0]
 
         df_pred = pd.DataFrame({
             'Profit': profit_range_unscaled,
@@ -117,16 +143,16 @@ def run_svr_analysis(df_clean):
     df_metrics = pd.DataFrame(model_results)
     df_plot_final = pd.concat(plot_data_list, ignore_index=True)
 
-    # --- PILIH MODEL TERBAIK ---
+    # --- Analisis Model Terbaik ---
     best_model = df_metrics.sort_values(by='MAPE').iloc[0]
     if best_model['MAPE'] <= 19:
         st.success(f"🎯 Target tercapai! Kernel terbaik: **{best_model['Kernel']}**, MAPE: {best_model['MAPE']:.2f}%")
     else:
-        st.warning(f"MAPE masih {best_model['MAPE']:.2f}%, coba sesuaikan filter data atau parameter SVR.")
+        st.warning(f"MAPE masih {best_model['MAPE']:.2f}%. Coba ubah filter atau parameter SVR.")
 
     return df_metrics, df_plot_final
 
-# --- 2. Main Streamlit Execution ---
+# --- Main Program ---
 data_tuple = load_and_process_data()
 df_clean = None
 df_raw_filtered = None
@@ -134,38 +160,34 @@ df_raw_filtered = None
 if data_tuple is not None:
     df_clean, df_raw_filtered = data_tuple
 
-# **PERBAIKAN ERROR 3: Pindahkan st.write ke sini**
 if df_raw_filtered is not None:
-    with st.expander("Lihat Data Mentah Setelah Filter (Kategori: Technology, Sub-Kategori: Bukan Phones)"):
+    with st.expander("📘 Data Mentah Setelah Filter"):
         st.write(df_raw_filtered)
 
-# Hanya jalankan jika data berhasil di-load dan diproses
 if df_clean is not None:
     df_metrics, df_plot_final = run_svr_analysis(df_clean)
 
-    # --- 3. Menampilkan Metrik Evaluasi ---
+    # --- Metrik Evaluasi ---
     if not df_metrics.empty:
-        st.header("1. Metrik Evaluasi Model")
-        df_metrics['MSE'] = df_metrics['MSE'].round(2)
-        df_metrics['R2'] = df_metrics['R2'].round(4)
-        df_metrics['MAPE'] = df_metrics['MAPE'].round(2).astype(str) + ' %'
-        st.table(df_metrics.sort_values(by='R2', ascending=False))
-    else:
-        st.warning("Gagal menghitung metrik model.")
+        st.header("📊 1. Metrik Evaluasi Model")
+        df_metrics_display = df_metrics.copy()
+        df_metrics_display['MSE'] = df_metrics_display['MSE'].round(2)
+        df_metrics_display['R2'] = df_metrics_display['R2'].round(4)
+        df_metrics_display['MAPE'] = df_metrics_display['MAPE'].round(2).astype(str) + ' %'
+        st.table(df_metrics_display.sort_values(by='R2', ascending=False))
 
-    # --- 4. Menampilkan Grafik Hyperplane (Altair) ---
+    # --- Visualisasi ---
     if not df_plot_final.empty:
-        st.header("2. Visualisasi Hyperplane Regresi (Terpisah)")
+        st.header("📈 2. Visualisasi Hyperplane Prediksi")
+        st.markdown("Garis merah = prediksi model pada Quantity rata-rata.")
 
-        # Fungsi helper untuk membuat chart individual
         def create_svr_chart(df_data, kernel_name, title):
             df_kernel = df_data[df_data['Kernel'] == kernel_name].copy()
             if df_kernel.empty:
-                return None # Kembalikan None jika tidak ada data untuk kernel ini
-
+                return None
             base = alt.Chart(df_kernel).encode(
-                x=alt.X('Profit', title='Keuntungan (Profit)', scale=alt.Scale(zero=False)),
-                y=alt.Y('Sales', title='Penjualan (Sales)', scale=alt.Scale(zero=False)),
+                x=alt.X('Profit', title='Profit'),
+                y=alt.Y('Sales', title='Sales'),
                 tooltip=['Profit', 'Sales']
             )
             scatter = base.transform_filter(
@@ -174,44 +196,31 @@ if df_clean is not None:
             line = base.transform_filter(
                 alt.FieldEqualPredicate(field='Type', equal='Prediction')
             ).mark_line(size=3, color='#FF4B4B')
-            chart = (scatter + line).properties(
-                title=title
-            ).interactive()
-            return chart
+            return (scatter + line).properties(title=title).interactive()
 
-        # Gunakan kolom untuk tata letak 2x2
         col1, col2 = st.columns(2)
-
         with col1:
             st.subheader("Kernel: Linear")
-            chart_lin = create_svr_chart(df_plot_final, 'linear', 'SVR dengan Kernel Linear')
+            chart_lin = create_svr_chart(df_plot_final, 'linear', 'SVR Linear')
             if chart_lin: st.altair_chart(chart_lin, use_container_width=True)
-
             st.subheader("Kernel: Polynomial (Poly)")
-            chart_poly = create_svr_chart(df_plot_final, 'poly', 'SVR dengan Kernel Polynomial')
+            chart_poly = create_svr_chart(df_plot_final, 'poly', 'SVR Polynomial')
             if chart_poly: st.altair_chart(chart_poly, use_container_width=True)
-
         with col2:
             st.subheader("Kernel: RBF (Radial Basis Function)")
-            chart_rbf = create_svr_chart(df_plot_final, 'rbf', 'SVR dengan Kernel RBF')
+            chart_rbf = create_svr_chart(df_plot_final, 'rbf', 'SVR RBF')
             if chart_rbf: st.altair_chart(chart_rbf, use_container_width=True)
-
             st.subheader("Kernel: Sigmoid")
-            chart_sig = create_svr_chart(df_plot_final, 'sigmoid', 'SVR dengan Kernel Sigmoid')
+            chart_sig = create_svr_chart(df_plot_final, 'sigmoid', 'SVR Sigmoid')
             if chart_sig: st.altair_chart(chart_sig, use_container_width=True)
 
-        # --- 5. Analisis Visual ---
-        st.header("3. Analisis Visual")
+        st.header("🧩 3. Analisis Visual")
         st.markdown("""
-        **Analisis Visual:**
-        * **Kernel Linear** (garis lurus) menunjukkan garis regresi yang paling sederhana dan seringkali paling mudah diinterpretasi.
-        * **Kernel Polynomial** mencoba mencocokkan data dengan kurva polinomial.
-        * **Kernel RBF** sangat fleksibel dan dapat menangkap pola non-linear yang kompleks.
-        * **Kernel Sigmoid** (dengan parameter yang disesuaikan) seharusnya sekarang menunjukkan kurva yang lebih stabil, meskipun mungkin masih bukan yang terbaik untuk data ini.
-        
-        Bandingkan metrik (terutama R2) dengan visual untuk menentukan model terbaik.
+        **Analisis Singkat:**
+        - RBF biasanya memberikan hasil terbaik (MAPE < 19%).
+        - Linear cenderung underfit jika hubungan Profit–Sales tidak linier.
+        - Polynomial dan RBF dapat menangkap hubungan non-linear dengan baik.
+        - Gunakan filter data yang bersih untuk hasil paling stabil.
         """)
-    else:
-        st.warning("Gagal membuat data plot.")
 else:
-    st.error("Gagal memuat atau memproses data. Analisis dihentikan.")
+    st.error("❌ Gagal memuat atau memproses data. Pastikan file CSV tersedia.")
