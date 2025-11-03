@@ -156,7 +156,7 @@ def run_svr_analysis(df_clean):
         elif kernel == 'sigmoid':
             # Sigmoid sangat tidak stabil. Kita jaga C tetap rendah dan gamma sangat rendah.
             # gamma=0.01 lebih stabil untuk sigmoid
-            svr = SVR(kernel=kernel, C=10, gamma=0.5, coef0=1) 
+            svr = SVR(kernel=kernel, C=10, gamma=0.5, coef0=2) 
             
         svr.fit(X_train_scaled, Y_train_scaled)
         
