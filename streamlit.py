@@ -142,21 +142,21 @@ def run_svr_analysis(df_clean):
         
         if kernel == 'linear':
             # Menaikkan C agar lebih pas, menurunkan epsilon agar lebih presisi
-            svr = SVR(kernel=kernel, C=10, epsilon=0.1)
+            svr = SVR(kernel=kernel, C=50, epsilon=0.1)
         
         elif kernel == 'poly':
             # Menggunakan gamma spesifik, C tinggi, dan epsilon rendah
-            svr = SVR(kernel=kernel, C=10, degree=3, gamma=0.5, epsilon=0.1)
+            svr = SVR(kernel=kernel, C=50, degree=3, gamma=0.5, epsilon=0.1)
             
         elif kernel == 'rbf':
             # Ini adalah kandidat terbaik. Kita naikkan C dan set gamma & epsilon.
             # gamma=0.1 adalah nilai yg umum dicoba
-            svr = SVR(kernel=kernel, C=10, gamma=0.5, epsilon=0.1)
+            svr = SVR(kernel=kernel, C=50, gamma=0.5, epsilon=0.1)
             
         elif kernel == 'sigmoid':
             # Sigmoid sangat tidak stabil. Kita jaga C tetap rendah dan gamma sangat rendah.
             # gamma=0.01 lebih stabil untuk sigmoid
-            svr = SVR(kernel=kernel, C=10, gamma=0.5, coef0=0) 
+            svr = SVR(kernel=kernel, C=50, gamma=0.5, coef0=10) 
             
         svr.fit(X_train_scaled, Y_train_scaled)
         
