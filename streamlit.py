@@ -125,3 +125,93 @@ def run_svr_analysis(df_clean):
         st.warning(f"MAPE masih {best_model['MAPE']:.2f}%, coba sesuaikan filter data atau parameter SVR.")
 
     return df_metrics, df_plot_final
+
+# --- 2. Main Streamlit Execution ---
+data_tuple = load_and_process_data()
+df_clean = None
+df_raw_filtered = None
+
+if data_tuple is not None:
+    df_clean, df_raw_filtered = data_tuple
+
+# **PERBAIKAN ERROR 3: Pindahkan st.write ke sini**
+if df_raw_filtered is not None:
+    with st.expander("Lihat Data Mentah Setelah Filter (Kategori: Technology, Sub-Kategori: Bukan Phones)"):
+        st.write(df_raw_filtered)
+
+# Hanya jalankan jika data berhasil di-load dan diproses
+if df_clean is not None:
+    df_metrics, df_plot_final = run_svr_analysis(df_clean)
+
+    # --- 3. Menampilkan Metrik Evaluasi ---
+    if not df_metrics.empty:
+        st.header("1. Metrik Evaluasi Model")
+        df_metrics['MSE'] = df_metrics['MSE'].round(2)
+        df_metrics['R2'] = df_metrics['R2'].round(4)
+        df_metrics['MAPE'] = df_metrics['MAPE'].round(2).astype(str) + ' %'
+        st.table(df_metrics.sort_values(by='R2', ascending=False))
+    else:
+        st.warning("Gagal menghitung metrik model.")
+
+    # --- 4. Menampilkan Grafik Hyperplane (Altair) ---
+    if not df_plot_final.empty:
+        st.header("2. Visualisasi Hyperplane Regresi (Terpisah)")
+
+        # Fungsi helper untuk membuat chart individual
+        def create_svr_chart(df_data, kernel_name, title):
+            df_kernel = df_data[df_data['Kernel'] == kernel_name].copy()
+            if df_kernel.empty:
+                return None # Kembalikan None jika tidak ada data untuk kernel ini
+
+            base = alt.Chart(df_kernel).encode(
+                x=alt.X('Profit', title='Keuntungan (Profit)', scale=alt.Scale(zero=False)),
+                y=alt.Y('Sales', title='Penjualan (Sales)', scale=alt.Scale(zero=False)),
+                tooltip=['Profit', 'Sales']
+            )
+            scatter = base.transform_filter(
+                alt.FieldEqualPredicate(field='Type', equal='Actual')
+            ).mark_point(opacity=0.6, size=30, color='gray', filled=True)
+            line = base.transform_filter(
+                alt.FieldEqualPredicate(field='Type', equal='Prediction')
+            ).mark_line(size=3, color='#FF4B4B')
+            chart = (scatter + line).properties(
+                title=title
+            ).interactive()
+            return chart
+
+        # Gunakan kolom untuk tata letak 2x2
+        col1, col2 = st.columns(2)
+
+        with col1:
+            st.subheader("Kernel: Linear")
+            chart_lin = create_svr_chart(df_plot_final, 'linear', 'SVR dengan Kernel Linear')
+            if chart_lin: st.altair_chart(chart_lin, use_container_width=True)
+
+            st.subheader("Kernel: Polynomial (Poly)")
+            chart_poly = create_svr_chart(df_plot_final, 'poly', 'SVR dengan Kernel Polynomial')
+            if chart_poly: st.altair_chart(chart_poly, use_container_width=True)
+
+        with col2:
+            st.subheader("Kernel: RBF (Radial Basis Function)")
+            chart_rbf = create_svr_chart(df_plot_final, 'rbf', 'SVR dengan Kernel RBF')
+            if chart_rbf: st.altair_chart(chart_rbf, use_container_width=True)
+
+            st.subheader("Kernel: Sigmoid")
+            chart_sig = create_svr_chart(df_plot_final, 'sigmoid', 'SVR dengan Kernel Sigmoid')
+            if chart_sig: st.altair_chart(chart_sig, use_container_width=True)
+
+        # --- 5. Analisis Visual ---
+        st.header("3. Analisis Visual")
+        st.markdown("""
+        **Analisis Visual:**
+        * **Kernel Linear** (garis lurus) menunjukkan garis regresi yang paling sederhana dan seringkali paling mudah diinterpretasi.
+        * **Kernel Polynomial** mencoba mencocokkan data dengan kurva polinomial.
+        * **Kernel RBF** sangat fleksibel dan dapat menangkap pola non-linear yang kompleks.
+        * **Kernel Sigmoid** (dengan parameter yang disesuaikan) seharusnya sekarang menunjukkan kurva yang lebih stabil, meskipun mungkin masih bukan yang terbaik untuk data ini.
+        
+        Bandingkan metrik (terutama R2) dengan visual untuk menentukan model terbaik.
+        """)
+    else:
+        st.warning("Gagal membuat data plot.")
+else:
+    st.error("Gagal memuat atau memproses data. Analisis dihentikan.")
