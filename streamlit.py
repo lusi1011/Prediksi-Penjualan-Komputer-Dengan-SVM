@@ -7,11 +7,6 @@ Original file is located at
     https://colab.research.google.com/drive/1shO92uUQrrLOIZ5jRJSjmyTY4Ah8rROx
 """
 
-# -*- coding: utf-8 -*-
-"""
-Streamlit SVR Analysis App - v3 (MAPE and Feature Fix)
-"""
-
 import streamlit as st
 import pandas as pd
 import numpy as np
@@ -141,20 +136,27 @@ def run_svr_analysis(df_clean):
     df_test_sample['Type'] = 'Actual'
     
     for kernel in kernels:
-        # --- PERBAIKAN 4: Menggunakan 'gamma="scale"' untuk kernel non-linear ---
-        # 'scale' (default) jauh lebih baik daripada 'auto'
+        # --- PERBAIKAN 4: Menggunakan nilai hyperparameter yang spesifik (manual tuning) ---
+        # Menghapus 'gamma="scale"' sesuai permintaan dan mencoba nilai yang lebih agresif
+        # untuk menurunkan MAPE.
+        
         if kernel == 'linear':
-            svr = SVR(kernel=kernel, C=10)
+            # Menaikkan C agar lebih pas, menurunkan epsilon agar lebih presisi
+            svr = SVR(kernel=kernel, C=100, epsilon=0.05)
         
         elif kernel == 'poly':
-            svr = SVR(kernel=kernel, C=50, degree=3, gamma='scale') # Derajat 3 mungkin lebih baik
+            # Menggunakan gamma spesifik, C tinggi, dan epsilon rendah
+            svr = SVR(kernel=kernel, C=100, degree=3, gamma=0.1, epsilon=0.05)
             
         elif kernel == 'rbf':
-            svr = SVR(kernel=kernel, C=50, gamma='scale')
+            # Ini adalah kandidat terbaik. Kita naikkan C dan set gamma & epsilon.
+            # gamma=0.1 adalah nilai yg umum dicoba
+            svr = SVR(kernel=kernel, C=100, gamma=0.1, epsilon=0.05)
             
         elif kernel == 'sigmoid':
-            # Ini akan MENGIZINKAN sigmoid menjadi non-linear jika data mendukung
-            svr = SVR(kernel=kernel, C=1, gamma='scale', coef0=0) 
+            # Sigmoid sangat tidak stabil. Kita jaga C tetap rendah dan gamma sangat rendah.
+            # gamma=0.01 lebih stabil untuk sigmoid
+            svr = SVR(kernel=kernel, C=1, gamma=0.1, coef0=0) 
             
         svr.fit(X_train_scaled, Y_train_scaled)
         
