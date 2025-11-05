@@ -47,6 +47,7 @@ def mean_absolute_percentage_error(y_true, y_pred):
 def load_and_process_data():
     """Memuat, memfilter, dan membersihkan data dari CSV."""
     try:
+        # Asumsi file SuperStore_Sales_Dataset.csv ada di lingkungan
         df = pd.read_csv('SuperStore_Sales_Dataset.csv')
         df = df.rename(columns={'Row ID+O6G3A1:R6': 'Row ID'})
     except FileNotFoundError:
@@ -150,11 +151,10 @@ def run_all_svr_analysis(df_clean, selected_feature, selected_target):
     for kernel in kernels:
         # Konfigurasi parameter default
         if kernel == 'linear': svr = SVR(kernel=kernel, C=10)
-        elif kernel == 'poly': svr = SVR(kernel=kernel, C=50, degree=2, gamma='auto')
-        elif kernel == 'rbf': svr = SVR(kernel=kernel, C=50, gamma='auto')
+        elif kernel == 'poly': svr = SVR(kernel=kernel, C=10, degree=2, gamma='auto')
+        elif kernel == 'rbf': svr = SVR(kernel=kernel, C=10, gamma='auto')
         elif kernel == 'sigmoid': svr = SVR(kernel=kernel, C=1, gamma=0.1, coef0=0)
             
-        # --- PERBAIKAN KRITIS: BLOK YANG HILANG DIKEMBALIKAN ---
         # Model harus di-fit pada data training
         svr.fit(X_train_scaled, Y_train_scaled)
         
@@ -172,11 +172,10 @@ def run_all_svr_analysis(df_clean, selected_feature, selected_target):
             'Kernel': kernel, 
             'MSE': mse, 
             'RMSE': rmse, # Baru
-            'MAE': mae,   # Baru
+            'MAE': mae,  # Baru
             'R2': r2, 
             'MAPE': mape
         })
-        # --- AKHIR PERBAIKAN ---
 
         # Prediksi untuk plotting hyperplane (GARIS)
         # Model yang sudah di-fit sekarang bisa memprediksi X_range_scaled
@@ -327,7 +326,6 @@ if df_clean is not None and len(df_clean) >= 10:
     st.markdown("Pilih **Target (Sumbu Y)** yang ingin Anda prediksi dan **Fitur (Sumbu X)** yang ingin Anda gunakan sebagai prediktor.")
     
     # Pilihan Target (Y-Axis)
-    # Sesuai permintaan Anda, 'Sales' (index 0) adalah default baru.
     selected_target = st.selectbox(
         "Pilih Target (Sumbu Y) untuk Diprediksi:",
         all_columns,
@@ -365,8 +363,42 @@ if df_clean is not None and len(df_clean) >= 10:
     )
     selected_feature_label = feature_labels[selected_feature]
 
-    # --- Bagian 3: Menampilkan Metrik Evaluasi ---
-    st.header(f"3. Perbandingan Metrik (Prediksi {selected_target_label} berdasarkan {selected_feature_label})")
+    # --- Bagian 3: Matriks Korelasi Fitur (BARU) ---
+    st.header(f"3. Matriks Korelasi Fitur")
+    st.markdown("Matriks korelasi menunjukkan hubungan linear antara Penjualan, Keuntungan, dan Jumlah produk.")
+    
+    # Hitung korelasi
+    corr_df = df_clean[all_columns].corr().stack().reset_index()
+    corr_df.columns = ['Variable_1', 'Variable_2', 'Correlation']
+    
+    # Buat Heatmap Altair
+    base_corr = alt.Chart(corr_df).encode(
+        x=alt.X('Variable_1', title=None),
+        y=alt.Y('Variable_2', title=None),
+        tooltip=['Variable_1', 'Variable_2', alt.Tooltip('Correlation', format='.3f')]
+    )
+
+    heatmap = base_corr.mark_rect().encode(
+        color=alt.Color('Correlation', scale=alt.Scale(range='diverging', domain=[-1, 1])),
+    )
+
+    text = base_corr.mark_text().encode(
+        text=alt.Text('Correlation', format='.3f'),
+        color=alt.condition(
+            alt.datum.Correlation > 0.5, 
+            alt.value('white'), 
+            alt.value('black')
+        )
+    )
+
+    corr_chart = (heatmap + text).properties(
+        title="Matriks Korelasi (Sales, Profit, Quantity)"
+    )
+
+    st.altair_chart(corr_chart, use_container_width=True)
+    
+    # --- Bagian 4: Menampilkan Metrik Evaluasi (Sebelumnya Bagian 3) ---
+    st.header(f"4. Perbandingan Metrik (Prediksi {selected_target_label} berdasarkan {selected_feature_label})")
     
     # Kirim 'selected_feature' DAN 'selected_target' ke fungsi analisis
     df_metrics, df_plot_final = run_all_svr_analysis(df_clean, selected_feature, selected_target)
@@ -385,8 +417,8 @@ if df_clean is not None and len(df_clean) >= 10:
     else:
         st.warning("Gagal menghitung metrik model.")
 
-    # --- Bagian 4: Visualisasi Hyperplane (Semua Kernel Default) ---
-    st.header("4. Visualisasi Hyperplane Regresi (Default Parameters)")
+    # --- Bagian 5: Visualisasi Hyperplane (Sebelumnya Bagian 4) ---
+    st.header("5. Visualisasi Hyperplane Regresi (Default Parameters)")
     if not df_plot_final.empty:
         col1, col2 = st.columns(2)
         kernels = ['linear', 'poly', 'rbf', 'sigmoid']
@@ -409,8 +441,8 @@ if df_clean is not None and len(df_clean) >= 10:
                     st.subheader(f"Kernel: {title}")
                     st.altair_chart(chart, use_container_width=True)
 
-    # --- Bagian 5: Otomatisasi Tuning (BARU) ---
-    st.header("5. Otomatisasi Tuning Parameter (RBF Kernel)")
+    # --- Bagian 6: Otomatisasi Tuning (Sebelumnya Bagian 5) ---
+    st.header("6. Otomatisasi Tuning Parameter (RBF Kernel)")
     st.markdown("Mencari parameter `C` dan `Gamma` terbaik untuk Kernel RBF menggunakan `RandomizedSearchCV`.")
     
     with st.spinner("Sedang menjalankan pencarian parameter... Ini mungkin perlu waktu sejenak."):
@@ -419,11 +451,11 @@ if df_clean is not None and len(df_clean) >= 10:
     st.success(f"Pencarian Selesai! Skor R2 terbaik (cross-validation): **{best_score:.4f}**")
     st.write("Parameter terbaik yang ditemukan:")
     st.json(best_params)
-    st.info("Coba masukkan parameter terbaik ini (atau yang mendekatinya) di panel 'Tuning Parameter SVR' di sidebar (Bagian 6 di bawah) untuk melihat visualisasinya.")
+    st.info("Coba masukkan parameter terbaik ini (atau yang mendekatinya) di panel 'Tuning Parameter SVR' di sidebar (Bagian 7 di bawah) untuk melihat visualisasinya.")
 
 
-    # --- Bagian 6 (sebelumnya 5): Interaktivitas: Custom Kernel ---
-    st.header("6. Interaktif: Uji Coba Kernel dan Tuning Parameter")
+    # --- Bagian 7: Interaktif: Uji Coba Kernel dan Tuning Parameter (Sebelumnya Bagian 6) ---
+    st.header("7. Interaktif: Uji Coba Kernel dan Tuning Parameter")
     st.sidebar.header("Tuning Parameter SVR")
     
     selected_kernel = st.sidebar.selectbox("Pilih Kernel", ['rbf', 'linear', 'poly', 'sigmoid'], index=0)
