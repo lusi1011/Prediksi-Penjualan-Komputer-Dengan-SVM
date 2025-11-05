@@ -102,7 +102,7 @@ def run_all_svr_analysis(df_clean, selected_feature, selected_target):
     if df_clean is None or len(df_clean) < 10:
         return pd.DataFrame(), pd.DataFrame()
 
-    # PERBAIKAN: X dan Y sekarang sepenuhnya dinamis
+    # X dan Y sekarang sepenuhnya dinamis
     X = df_clean[selected_feature].values.reshape(-1, 1)
     Y = df_clean[selected_target].values.reshape(-1, 1)
 
@@ -127,7 +127,7 @@ def run_all_svr_analysis(df_clean, selected_feature, selected_target):
     X_range_scaled = np.linspace(X_train_scaled.min(), X_train_scaled.max(), 50).reshape(-1, 1)
     plot_data_list = []
     
-    # PERBAIKAN: DataFrame plot menggunakan nama fitur dan target yang dinamis
+    # DataFrame plot menggunakan nama fitur dan target yang dinamis
     n_plot_samples = 50
     df_test_actual = pd.DataFrame({selected_feature: X_test.ravel(), selected_target: Y_test.ravel()})
     if len(df_test_actual) > n_plot_samples:
@@ -141,10 +141,26 @@ def run_all_svr_analysis(df_clean, selected_feature, selected_target):
         elif kernel == 'rbf': svr = SVR(kernel=kernel, C=50, gamma='auto')
         elif kernel == 'sigmoid': svr = SVR(kernel=kernel, C=1, gamma=0.1, coef0=0)
             
+        # --- PERBAIKAN KRITIS: BLOK YANG HILANG DIKEMBALIKAN ---
+        # Model harus di-fit pada data training
+        svr.fit(X_train_scaled, Y_train_scaled)
+        
+        # Evaluasi Metrik pada Test Set
+        Y_pred_test_scaled = svr.predict(X_test_scaled)
+        Y_pred_test = scaler_Y.inverse_transform(Y_pred_test_scaled.reshape(-1, 1))
+        
+        mse = mean_squared_error(Y_test, Y_pred_test)
+        r2 = r2_score(Y_test, Y_pred_test)
+        mape = mean_absolute_percentage_error(Y_test, Y_pred_test)
+        model_results.append({'Kernel': kernel, 'MSE': mse, 'R2': r2, 'MAPE': mape})
+        # --- AKHIR PERBAIKAN ---
+
+        # Prediksi untuk plotting hyperplane (GARIS)
+        # Model yang sudah di-fit sekarang bisa memprediksi X_range_scaled
         Y_pred_range_scaled = svr.predict(X_range_scaled)
         Y_pred_range = scaler_Y.inverse_transform(Y_pred_range_scaled.reshape(-1, 1))
 
-        # PERBAIKAN: DataFrame prediksi menggunakan nama fitur dan target yang dinamis
+        # DataFrame prediksi menggunakan nama fitur dan target yang dinamis
         df_pred = pd.DataFrame({
             selected_feature: scaler_X.inverse_transform(X_range_scaled).ravel(),
             selected_target: Y_pred_range.ravel(),
@@ -170,7 +186,7 @@ def create_svr_chart(df_data, kernel_name, title, selected_feature, x_label, sel
         return None 
 
     base = alt.Chart(df_kernel).encode(
-        # PERBAIKAN: Sumbu X dan Y serta tooltip sekarang dinamis
+        # Sumbu X dan Y serta tooltip sekarang dinamis
         x=alt.X(selected_feature, title=x_label, scale=alt.Scale(zero=False)),
         y=alt.Y(selected_target, title=y_label, scale=alt.Scale(zero=False)),
         tooltip=[selected_feature, selected_target]
@@ -190,7 +206,7 @@ def create_svr_chart(df_data, kernel_name, title, selected_feature, x_label, sel
 @st.cache_data(show_spinner="Menghitung SVR Kustom...")
 def run_custom_svr(df_clean, selected_feature, selected_target, kernel, C, gamma, degree=3, coef0=0.0):
     """Menjalankan SVR kustom pada fitur dan target yang dipilih."""
-    # PERBAIKAN: X dan Y sekarang sepenuhnya dinamis
+    # X dan Y sekarang sepenuhnya dinamis
     X = df_clean[selected_feature].values.reshape(-1, 1)
     Y = df_clean[selected_target].values.reshape(-1, 1)
 
@@ -213,7 +229,7 @@ def run_custom_svr(df_clean, selected_feature, selected_target, kernel, C, gamma
     Y_pred_range_scaled = svr.predict(X_range_scaled)
     Y_pred_range = scaler_Y.inverse_transform(Y_pred_range_scaled.reshape(-1, 1))
 
-    # PERBAIKAN: DataFrame plot menggunakan nama fitur dan target yang dinamis
+    # DataFrame plot menggunakan nama fitur dan target yang dinamis
     df_pred_custom = pd.DataFrame({
         selected_feature: scaler_X.inverse_transform(X_range_scaled).ravel(),
         selected_target: Y_pred_range.ravel(),
@@ -245,10 +261,8 @@ if df_clean is not None and len(df_clean) >= 10:
         'Profit': 'Keuntungan (Profit)',
         'Quantity': 'Jumlah (Quantity)'
     }
-
-    # --- PERBAIKAN: Bagian 1 & 2 Dibalik untuk UX yang lebih baik ---
     
-    # --- BARU: Bagian 1: Konfigurasi Model Interaktif ---
+    # --- Bagian 1: Konfigurasi Model Interaktif ---
     st.header("1. Konfigurasi Model Interaktif")
     st.markdown("Pilih **Target (Sumbu Y)** yang ingin Anda prediksi dan **Fitur (Sumbu X)** yang ingin Anda gunakan sebagai prediktor.")
     
@@ -265,11 +279,11 @@ if df_clean is not None and len(df_clean) >= 10:
     # Fitur yang tersedia adalah semua kolom KECUALI target yang dipilih
     available_features = [f for f in all_columns if f != selected_target]
     
-    # --- BARU: Bagian 2: Analisis Seleksi Fitur ---
+    # --- Bagian 2: Analisis Seleksi Fitur ---
     st.header(f"2. Analisis Fitur (Target: {selected_target_label})")
     st.markdown(f"Fitur mana yang memiliki hubungan statistik terkuat dengan **{selected_target_label}**?")
     
-    # PERBAIKAN: Jalankan seleksi fitur pada target yang dipilih
+    # Jalankan seleksi fitur pada target yang dipilih
     feature_scores_df = run_feature_selection(df_clean, selected_target)
     
     if not feature_scores_df.empty:
@@ -294,7 +308,7 @@ if df_clean is not None and len(df_clean) >= 10:
     # --- Bagian 3: Menampilkan Metrik Evaluasi ---
     st.header(f"3. Perbandingan Metrik (Prediksi {selected_target_label} berdasarkan {selected_feature_label})")
     
-    # PERBAIKAN: Kirim 'selected_feature' DAN 'selected_target' ke fungsi analisis
+    # Kirim 'selected_feature' DAN 'selected_target' ke fungsi analisis
     df_metrics, df_plot_final = run_all_svr_analysis(df_clean, selected_feature, selected_target)
     
     if not df_metrics.empty:
@@ -314,7 +328,7 @@ if df_clean is not None and len(df_clean) >= 10:
         titles = ['Linear', 'Polynomial', 'RBF', 'Sigmoid']
         
         for i, (kernel, title) in enumerate(zip(kernels, titles)):
-            # PERBAIKAN: Kirim 'selected_feature' dan 'selected_target' ke fungsi plot
+            # Kirim 'selected_feature' dan 'selected_target' ke fungsi plot
             chart = create_svr_chart(
                 df_plot_final, 
                 kernel, 
@@ -348,7 +362,7 @@ if df_clean is not None and len(df_clean) >= 10:
     if selected_kernel == 'sigmoid':
         coef0_value = st.sidebar.slider("Pilih Coef0 (untuk Sigmoid)", -10.0, 10.0, 0.0)
 
-    # PERBAIKAN: Kirim 'selected_feature' DAN 'selected_target' ke fungsi kustom
+    # Kirim 'selected_feature' DAN 'selected_target' ke fungsi kustom
     df_plot_custom = run_custom_svr(
         df_clean, selected_feature, selected_target, selected_kernel, c_value, 
         gamma_value, degree_value, coef0_value
