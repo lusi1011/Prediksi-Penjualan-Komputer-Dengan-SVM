@@ -128,7 +128,7 @@ def run_all_svr_analysis(df_clean, selected_feature):
         if kernel == 'linear': svr = SVR(kernel=kernel, C=10)
         elif kernel == 'poly': svr = SVR(kernel=kernel, C=10, degree=2, gamma=0.1)
         elif kernel == 'rbf': svr = SVR(kernel=kernel, C=10, gamma=0.1)
-        elif kernel == 'sigmoid': svr = SVR(kernel=kernel, C=2, gamma=0.1, coef0=0)
+        elif kernel == 'sigmoid': svr = SVR(kernel=kernel, C=1, gamma=0.1, coef0=0)
             
         svr.fit(X_train_scaled, Y_train_scaled)
         
