@@ -207,7 +207,7 @@ if df_clean is not None:
             base = alt.Chart(df_kernel).encode(
                 x=alt.X('Sales', title='Penjualan (Sales)', scale=alt.Scale(zero=False)),
                 y=alt.Y('Quantity', title='Jumlah (Quantity)', scale=alt.Scale(zero=False)),
-                tooltip=['Profit', 'Sales']
+                tooltip=['Sales', 'Quantity']
             )
             scatter = base.transform_filter(
                 alt.FieldEqualPredicate(field='Type', equal='Actual')
