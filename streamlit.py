@@ -337,34 +337,8 @@ if df_clean is not None and len(df_clean) >= 10:
     # Fitur yang tersedia adalah semua kolom KECUALI target yang dipilih
     available_features = [f for f in all_columns if f != selected_target]
     
-    # --- Bagian 2: Analisis Seleksi Fitur ---
-    st.header(f"2. Analisis Fitur (Target: {selected_target_label})")
-    st.markdown(f"Fitur mana yang memiliki hubungan statistik terkuat dengan **{selected_target_label}**?")
-    
-    # Jalankan seleksi fitur pada target yang dipilih
-    feature_scores_df = run_feature_selection(df_clean, selected_target)
-    
-    if not feature_scores_df.empty:
-        st.dataframe(feature_scores_df, use_container_width=True)
-        st.caption("Metode: `SelectKBest` dengan `f_regression`. F-Score yang lebih tinggi menunjukkan fitur yang lebih baik untuk prediksi.")
-        # Tentukan fitur terbaik secara default dari daftar yang tersedia
-        default_feature = feature_scores_df.iloc[0]['Fitur']
-        default_index = available_features.index(default_feature)
-    else:
-        st.warning("Gagal menjalankan analisis fitur.")
-        default_index = 0 # Fallback
-    
-    # Pilihan Fitur (X-Axis)
-    selected_feature = st.selectbox(
-        "Pilih Fitur (Sumbu X) untuk Regresi:",
-        available_features,
-        index=default_index,
-        format_func=lambda x: feature_labels[x] # Tampilkan label yang mudah dibaca
-    )
-    selected_feature_label = feature_labels[selected_feature]
-
-    # --- Bagian 3: Matriks Korelasi Fitur (BARU) ---
-    st.header(f"3. Matriks Korelasi Fitur")
+    # --- Bagian 2: Matriks Korelasi Fitur ---
+    st.header(f"2. Matriks Korelasi Fitur")
     st.markdown("Matriks korelasi menunjukkan hubungan linear antara Penjualan, Keuntungan, dan Jumlah produk.")
     
     # Hitung korelasi
@@ -396,7 +370,33 @@ if df_clean is not None and len(df_clean) >= 10:
     )
 
     st.altair_chart(corr_chart, use_container_width=True)
+
+    # --- Bagian 3: Analisis Seleksi Fitur ---
+    st.header(f"3. Analisis Fitur (Target: {selected_target_label})")
+    st.markdown(f"Fitur mana yang memiliki hubungan statistik terkuat dengan **{selected_target_label}**?")
     
+    # Jalankan seleksi fitur pada target yang dipilih
+    feature_scores_df = run_feature_selection(df_clean, selected_target)
+    
+    if not feature_scores_df.empty:
+        st.dataframe(feature_scores_df, use_container_width=True)
+        st.caption("Metode: `SelectKBest` dengan `f_regression`. F-Score yang lebih tinggi menunjukkan fitur yang lebih baik untuk prediksi.")
+        # Tentukan fitur terbaik secara default dari daftar yang tersedia
+        default_feature = feature_scores_df.iloc[0]['Fitur']
+        default_index = available_features.index(default_feature)
+    else:
+        st.warning("Gagal menjalankan analisis fitur.")
+        default_index = 0 # Fallback
+    
+    # Pilihan Fitur (X-Axis)
+    selected_feature = st.selectbox(
+        "Pilih Fitur (Sumbu X) untuk Regresi:",
+        available_features,
+        index=default_index,
+        format_func=lambda x: feature_labels[x] # Tampilkan label yang mudah dibaca
+    )
+    selected_feature_label = feature_labels[selected_feature]
+
     # --- Bagian 4: Menampilkan Metrik Evaluasi (Sebelumnya Bagian 3) ---
     st.header(f"4. Perbandingan Metrik (Prediksi {selected_target_label} berdasarkan {selected_feature_label})")
     
