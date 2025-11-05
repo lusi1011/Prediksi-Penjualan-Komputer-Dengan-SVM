@@ -83,8 +83,8 @@ def run_svr_analysis(df_clean):
         st.warning("Data terlalu sedikit untuk analisis SVR setelah sampling.")
         return pd.DataFrame(), pd.DataFrame()
 
-    X = df_clean['Profit'].values.reshape(-1, 1)
-    Y = df_clean['Sales'].values.reshape(-1, 1)
+    X = df_clean['Sales'].values.reshape(-1, 1)
+    Y = df_clean['Quantity'].values.reshape(-1, 1)
 
     # Pastikan test_size tidak lebih besar dari jumlah data
     test_split_size = 0.3
