@@ -320,25 +320,9 @@ if df_clean is not None and len(df_clean) >= 10:
         'Profit': 'Keuntungan (Profit)',
         'Quantity': 'Jumlah (Quantity)'
     }
-    
-    # --- Bagian 1: Konfigurasi Model Interaktif ---
-    st.header("1. Konfigurasi Model Interaktif")
-    st.markdown("Pilih **Target (Sumbu Y)** yang ingin Anda prediksi dan **Fitur (Sumbu X)** yang ingin Anda gunakan sebagai prediktor.")
-    
-    # Pilihan Target (Y-Axis)
-    selected_target = st.selectbox(
-        "Pilih Target (Sumbu Y) untuk Diprediksi:",
-        all_columns,
-        index=0, # Default: 'Sales'
-        format_func=lambda x: feature_labels[x]
-    )
-    selected_target_label = feature_labels[selected_target]
 
-    # Fitur yang tersedia adalah semua kolom KECUALI target yang dipilih
-    available_features = [f for f in all_columns if f != selected_target]
-    
-    # --- Bagian 2: Matriks Korelasi Fitur ---
-    st.header(f"2. Matriks Korelasi Fitur")
+    # --- Bagian 1: Matriks Korelasi Fitur ---
+    st.header(f"1. Matriks Korelasi Fitur")
     st.markdown("Matriks korelasi menunjukkan hubungan linear antara Penjualan, Keuntungan, dan Jumlah produk.")
     
     # Hitung korelasi
@@ -370,7 +354,23 @@ if df_clean is not None and len(df_clean) >= 10:
     )
 
     st.altair_chart(corr_chart, use_container_width=True)
+    
+    # --- Bagian 2: Konfigurasi Model Interaktif ---
+    st.header("2. Konfigurasi Model Interaktif")
+    st.markdown("Pilih **Target (Sumbu Y)** yang ingin Anda prediksi dan **Fitur (Sumbu X)** yang ingin Anda gunakan sebagai prediktor.")
+    
+    # Pilihan Target (Y-Axis)
+    selected_target = st.selectbox(
+        "Pilih Target (Sumbu Y) untuk Diprediksi:",
+        all_columns,
+        index=0, # Default: 'Sales'
+        format_func=lambda x: feature_labels[x]
+    )
+    selected_target_label = feature_labels[selected_target]
 
+    # Fitur yang tersedia adalah semua kolom KECUALI target yang dipilih
+    available_features = [f for f in all_columns if f != selected_target]
+    
     # --- Bagian 3: Analisis Seleksi Fitur ---
     st.header(f"3. Analisis Fitur (Target: {selected_target_label})")
     st.markdown(f"Fitur mana yang memiliki hubungan statistik terkuat dengan **{selected_target_label}**?")
