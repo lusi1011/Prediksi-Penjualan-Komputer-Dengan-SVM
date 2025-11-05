@@ -205,8 +205,8 @@ if df_clean is not None:
                 return None # Kembalikan None jika tidak ada data untuk kernel ini
 
             base = alt.Chart(df_kernel).encode(
-                x=alt.X('Profit', title='Keuntungan (Profit)', scale=alt.Scale(zero=False)),
-                y=alt.Y('Sales', title='Penjualan (Sales)', scale=alt.Scale(zero=False)),
+                x=alt.X('Sales', title='Penjualan (Sales)', scale=alt.Scale(zero=False)),
+                y=alt.Y('Quantity', title='Jumlah (Quantity)', scale=alt.Scale(zero=False)),
                 tooltip=['Profit', 'Sales']
             )
             scatter = base.transform_filter(
