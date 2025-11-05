@@ -11,11 +11,11 @@ import streamlit as st
 import pandas as pd
 import numpy as np
 import altair as alt
-from sklearn.model_selection import train_test_split
+from sklearn.model_selection import train_test_split, RandomizedSearchCV
 from sklearn.preprocessing import StandardScaler, MinMaxScaler
 from sklearn.feature_selection import SelectKBest, f_regression
 from sklearn.svm import SVR
-from sklearn.metrics import mean_squared_error, r2_score
+from sklearn.metrics import mean_squared_error, r2_score, mean_absolute_error
 
 # Konfigurasi Halaman
 st.set_page_config(layout="wide", page_title="SVR Sales Analysis")
@@ -24,11 +24,24 @@ st.caption("Menganalisis dan memprediksi target (Y) berdasarkan fitur (X) yang d
 
 # --- 1. Fungsi Pembantu dan Pemrosesan Data ---
 
+# PERBAIKAN 1: Fungsi MAPE yang lebih robust
+@st.cache_data
 def mean_absolute_percentage_error(y_true, y_pred):
-    """Menghitung MAPE, aman dari pembagian nol."""
+    """Menghitung MAPE, aman dari pembagian nol atau nilai sangat kecil."""
     y_true, y_pred = np.array(y_true), np.array(y_pred)
-    y_true[y_true == 0] = 1e-6
-    return np.mean(np.abs((y_true - y_pred) / y_true)) * 100
+    
+    # Gunakan epsilon kecil untuk menghindari pembagian dengan nol
+    epsilon = 1e-6
+    mask = np.abs(y_true) > epsilon
+    
+    # Hitung hanya pada data yang valid
+    y_true_filtered = y_true[mask]
+    y_pred_filtered = y_pred[mask]
+    
+    if len(y_true_filtered) == 0:
+        return 0.0 # Jika tidak ada data valid, error 0
+        
+    return np.mean(np.abs((y_true_filtered - y_pred_filtered) / y_true_filtered)) * 100
 
 @st.cache_data
 def load_and_process_data():
@@ -150,9 +163,19 @@ def run_all_svr_analysis(df_clean, selected_feature, selected_target):
         Y_pred_test = scaler_Y.inverse_transform(Y_pred_test_scaled.reshape(-1, 1))
         
         mse = mean_squared_error(Y_test, Y_pred_test)
+        # PERBAIKAN 2: Tambahkan RMSE dan MAE
+        rmse = np.sqrt(mse)
+        mae = mean_absolute_error(Y_test, Y_pred_test)
         r2 = r2_score(Y_test, Y_pred_test)
         mape = mean_absolute_percentage_error(Y_test, Y_pred_test)
-        model_results.append({'Kernel': kernel, 'MSE': mse, 'R2': r2, 'MAPE': mape})
+        model_results.append({
+            'Kernel': kernel, 
+            'MSE': mse, 
+            'RMSE': rmse, # Baru
+            'MAE': mae,   # Baru
+            'R2': r2, 
+            'MAPE': mape
+        })
         # --- AKHIR PERBAIKAN ---
 
         # Prediksi untuk plotting hyperplane (GARIS)
@@ -244,6 +267,43 @@ def run_custom_svr(df_clean, selected_feature, selected_target, kernel, C, gamma
     df_plot_custom = pd.concat([df_actual_custom, df_pred_custom], ignore_index=True)
     return df_plot_custom
 
+# --- PERBAIKAN 3: Fungsi Baru untuk Auto-Tuning ---
+@st.cache_data(show_spinner="Mencari parameter RBF terbaik (RandomizedSearch)...")
+def run_parameter_tuning(df_clean, selected_feature, selected_target):
+    """Menjalankan RandomizedSearchCV untuk menemukan parameter RBF terbaik."""
+    X = df_clean[selected_feature].values.reshape(-1, 1)
+    Y = df_clean[selected_target].values.reshape(-1, 1)
+
+    scaler_X = StandardScaler()
+    scaler_Y = StandardScaler()
+    X_scaled = scaler_X.fit_transform(X)
+    Y_scaled = scaler_Y.fit_transform(Y).ravel()
+    
+    # Tentukan rentang parameter untuk dicari
+    param_dist = {
+        'C': np.logspace(-1, 3, 20), # 0.1 s/d 1000
+        'gamma': np.logspace(-3, 1, 20), # 0.001 s/d 10
+    }
+    
+    # Gunakan SVR dengan kernel RBF
+    svr = SVR(kernel='rbf')
+    
+    # n_iter=15: Coba 15 kombinasi acak
+    # cv=3: 3-fold cross-validation
+    random_search = RandomizedSearchCV(
+        svr, 
+        param_distributions=param_dist, 
+        n_iter=15, 
+        cv=3, 
+        scoring='r2', # Fokus pada R2 Score terbaik
+        n_jobs=-1, # Gunakan semua core CPU
+        random_state=42
+    )
+    
+    random_search.fit(X_scaled, Y_scaled)
+    
+    return random_search.best_params_, random_search.best_score_
+
 # --- 2. Main Streamlit Execution ---
 df_clean, df_raw_filtered = load_and_process_data()
 
@@ -314,8 +374,13 @@ if df_clean is not None and len(df_clean) >= 10:
     if not df_metrics.empty:
         df_metrics_display = df_metrics.copy()
         df_metrics_display['MSE'] = df_metrics_display['MSE'].round(2)
+        # Tampilkan metrik baru
+        df_metrics_display['RMSE'] = df_metrics_display['RMSE'].round(2)
+        df_metrics_display['MAE'] = df_metrics_display['MAE'].round(2)
         df_metrics_display['R2'] = df_metrics_display['R2'].round(4)
         df_metrics_display['MAPE'] = df_metrics_display['MAPE'].round(2).astype(str) + ' %'
+        
+        # Urutkan berdasarkan R2, tapi tampilkan semua metrik baru
         st.dataframe(df_metrics_display.sort_values(by='R2', ascending=False), use_container_width=True)
     else:
         st.warning("Gagal menghitung metrik model.")
@@ -344,8 +409,21 @@ if df_clean is not None and len(df_clean) >= 10:
                     st.subheader(f"Kernel: {title}")
                     st.altair_chart(chart, use_container_width=True)
 
-    # --- Bagian 5: Interaktivitas: Custom Kernel ---
-    st.header("5. Interaktif: Uji Coba Kernel dan Tuning Parameter")
+    # --- Bagian 5: Otomatisasi Tuning (BARU) ---
+    st.header("5. Otomatisasi Tuning Parameter (RBF Kernel)")
+    st.markdown("Mencari parameter `C` dan `Gamma` terbaik untuk Kernel RBF menggunakan `RandomizedSearchCV`.")
+    
+    with st.spinner("Sedang menjalankan pencarian parameter... Ini mungkin perlu waktu sejenak."):
+        best_params, best_score = run_parameter_tuning(df_clean, selected_feature, selected_target)
+    
+    st.success(f"Pencarian Selesai! Skor R2 terbaik (cross-validation): **{best_score:.4f}**")
+    st.write("Parameter terbaik yang ditemukan:")
+    st.json(best_params)
+    st.info("Coba masukkan parameter terbaik ini (atau yang mendekatinya) di panel 'Tuning Parameter SVR' di sidebar (Bagian 6 di bawah) untuk melihat visualisasinya.")
+
+
+    # --- Bagian 6 (sebelumnya 5): Interaktivitas: Custom Kernel ---
+    st.header("6. Interaktif: Uji Coba Kernel dan Tuning Parameter")
     st.sidebar.header("Tuning Parameter SVR")
     
     selected_kernel = st.sidebar.selectbox("Pilih Kernel", ['rbf', 'linear', 'poly', 'sigmoid'], index=0)
