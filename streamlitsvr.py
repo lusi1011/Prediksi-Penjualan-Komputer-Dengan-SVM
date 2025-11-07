@@ -286,7 +286,7 @@ def run_parameter_tuning(df_clean, selected_feature, selected_target):
     }
     
     # Gunakan SVR dengan kernel RBF
-    svr = SVR(kernel='linear')
+    svr = SVR(kernel='poly')
     
     # n_iter=15: Coba 15 kombinasi acak
     # cv=3: 3-fold cross-validation
