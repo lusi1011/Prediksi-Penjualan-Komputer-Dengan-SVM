@@ -18,13 +18,12 @@ from sklearn.svm import SVR
 from sklearn.metrics import mean_squared_error, r2_score, mean_absolute_error
 
 # Konfigurasi Halaman
-st.set_page_config(layout="wide", page_title="SVR Sales Analysis")
-st.title("Analisis Support Vector Regression (SVR) dengan Seleksi Fitur")
-st.caption("Menganalisis dan memprediksi target (Y) berdasarkan fitur (X) yang dipilih.")
+st.set_page_config(layout="wide", page_title="SVR Product Sales Analysis")
+st.title("Analisis SVR pada Penjualan Produk (Agregat)")
+st.caption("Menganalisis dan memprediksi target (misal: Total Sales) berdasarkan fitur (misal: Total Quantity) pada tingkat produk.")
 
 # --- 1. Fungsi Pembantu dan Pemrosesan Data ---
 
-# PERBAIKAN 1: Fungsi MAPE yang lebih robust
 @st.cache_data
 def mean_absolute_percentage_error(y_true, y_pred):
     """Menghitung MAPE, aman dari pembagian nol atau nilai sangat kecil."""
@@ -45,7 +44,7 @@ def mean_absolute_percentage_error(y_true, y_pred):
 
 @st.cache_data
 def load_and_process_data():
-    """Memuat, memfilter, dan membersihkan data dari CSV."""
+    """Memuat, memfilter, MENGAGREGASI per produk, dan membersihkan data."""
     try:
         df = pd.read_csv('SuperStore_Sales_Dataset.csv')
         df = df.rename(columns={'Row ID+O6G3A1:R6': 'Row ID'})
@@ -59,26 +58,45 @@ def load_and_process_data():
     # Filter data (Technology, non-Phones)
     df_tech = df[df['Category'] == 'Technology']
     df_com = df_tech[df_tech['Sub-Category'] != 'Phones']
-        
-    # Ambil fitur yang relevan
-    df_clean = df_com[['Sales', 'Profit', 'Quantity']].dropna().copy()
     
-    # Filter data ekstrem
-    df_clean = df_clean[
-        (df_clean['Sales'] < 3000) & (df_clean['Sales'] > 0) &
-        (df_clean['Profit'] > -500) & (df_clean['Profit'] < 800)
+    # --- PERUBAHAN KUNCI: AGREGRASI BERDASARKAN NAMA PRODUK ---
+    # Kita tidak bisa memprediksi 'Product Name', jadi kita kelompokkan berdasarkan itu.
+    if 'Product Name' not in df_com.columns:
+        st.error("Kolom 'Product Name' tidak ditemukan. Agregasi dibatalkan.")
+        return None, df_com
+
+    # Ambil fitur yang relevan SEBELUM agregasi
+    df_relevant = df_com[['Product Name', 'Sales', 'Profit', 'Quantity']].dropna().copy()
+
+    # Agregasi data: Setiap baris adalah satu produk unik
+    df_agg = df_relevant.groupby('Product Name').agg(
+        Sales=('Sales', 'sum'),
+        Profit=('Profit', 'sum'),
+        Quantity=('Quantity', 'sum')
+    ).reset_index()
+
+    # Simpan nama produk untuk referensi
+    product_names = df_agg[['Product Name']].copy()
+    
+    # Filter data ekstrem (filter ini sekarang berlaku untuk TOTAL per produk)
+    df_clean = df_agg[
+        (df_agg['Sales'] < 3000) & (df_agg['Sales'] > 0) &
+        (df_agg['Profit'] > -500) & (df_agg['Profit'] < 800)
     ]
     
     # Sampling yang Aman
-    n_samples = 250
+    n_samples = 10
     if len(df_clean) == 0:
-        st.warning("Tidak ada data yang tersisa setelah filter.")
-        return None, None
+        st.warning("Tidak ada data produk yang tersisa setelah filter agregat.")
+        return None, df_com
         
     if len(df_clean) < n_samples:
         n_samples = len(df_clean)
-        
-    return df_clean.sample(n=n_samples, random_state=42), df_com
+    
+    # df_clean sekarang berisi data agregat yang disample
+    # df_com adalah data mentah yang difilter (untuk 'Lihat Data Mentah')
+    return df_clean.sample(n=n_samples, random_state=42), df_com, df_agg.sort_values(by='Sales', ascending=False)
+
 
 @st.cache_data
 def run_feature_selection(df_clean, target_column):
@@ -87,10 +105,16 @@ def run_feature_selection(df_clean, target_column):
         return pd.DataFrame()
 
     # PERBAIKAN: Fitur sekarang adalah semua kolom KECUALI target
+    # Kita HAPUS 'Product Name' dari sini karena bukan fitur numerik
     all_columns = ['Sales', 'Profit', 'Quantity']
     features = [col for col in all_columns if col != target_column]
     target = target_column
     
+    # Periksa jika tidak ada fitur tersisa (misal: jika 'all_columns' hanya punya 1 item)
+    if not features:
+        st.warning(f"Tidak ada fitur yang tersisa untuk memprediksi {target}.")
+        return pd.DataFrame()
+        
     X = df_clean[features]
     Y = df_clean[target]
     
@@ -154,7 +178,6 @@ def run_all_svr_analysis(df_clean, selected_feature, selected_target):
         elif kernel == 'rbf': svr = SVR(kernel=kernel, C=1.8, gamma=0.33)
         elif kernel == 'sigmoid': svr = SVR(kernel=kernel, C=1.8, gamma=0.33, coef0=0)
             
-        # --- PERBAIKAN KRITIS: BLOK YANG HILANG DIKEMBALIKAN ---
         # Model harus di-fit pada data training
         svr.fit(X_train_scaled, Y_train_scaled)
         
@@ -163,7 +186,6 @@ def run_all_svr_analysis(df_clean, selected_feature, selected_target):
         Y_pred_test = scaler_Y.inverse_transform(Y_pred_test_scaled.reshape(-1, 1))
         
         mse = mean_squared_error(Y_test, Y_pred_test)
-        # PERBAIKAN 2: Tambahkan RMSE dan MAE
         rmse = np.sqrt(mse)
         mae = mean_absolute_error(Y_test, Y_pred_test)
         r2 = r2_score(Y_test, Y_pred_test)
@@ -172,14 +194,12 @@ def run_all_svr_analysis(df_clean, selected_feature, selected_target):
             'Kernel': kernel, 
             'MSE': mse, 
             'RMSE': rmse, # Baru
-            'MAE': mae,   # Baru
+            'MAE': mae,  # Baru
             'R2': r2, 
             'MAPE': mape
         })
-        # --- AKHIR PERBAIKAN ---
 
         # Prediksi untuk plotting hyperplane (GARIS)
-        # Model yang sudah di-fit sekarang bisa memprediksi X_range_scaled
         Y_pred_range_scaled = svr.predict(X_range_scaled)
         Y_pred_range = scaler_Y.inverse_transform(Y_pred_range_scaled.reshape(-1, 1))
 
@@ -267,7 +287,6 @@ def run_custom_svr(df_clean, selected_feature, selected_target, kernel, C, gamma
     df_plot_custom = pd.concat([df_actual_custom, df_pred_custom], ignore_index=True)
     return df_plot_custom
 
-# --- PERBAIKAN 3: Fungsi Baru untuk Auto-Tuning ---
 @st.cache_data(show_spinner="Mencari parameter RBF terbaik (RandomizedSearch)...")
 def run_parameter_tuning(df_clean, selected_feature, selected_target):
     """Menjalankan RandomizedSearchCV untuk menemukan parameter RBF terbaik."""
@@ -305,33 +324,34 @@ def run_parameter_tuning(df_clean, selected_feature, selected_target):
     return random_search.best_params_, random_search.best_score_
 
 # --- 2. Main Streamlit Execution ---
-df_clean, df_raw_filtered = load_and_process_data()
+# --- PERUBAHAN: Fungsi load data sekarang mengembalikan 3 nilai ---
+df_clean, df_raw_filtered, df_product_ranking = load_and_process_data()
 
 # Tampilkan Data Mentah
 if df_raw_filtered is not None:
-    with st.expander("Lihat Data Mentah Setelah Filter (Kategori: Technology, Sub-Kategori: Bukan Phones)"):
+    with st.expander("Lihat Data Mentah (SEBELUM Agregasi, Kategori: Technology, Bukan Phones)"):
         st.write(df_raw_filtered)
 
 # Hanya jalankan jika data berhasil di-load dan diproses
 if df_clean is not None and len(df_clean) >= 10:
     
+    # --- PERUBAHAN: Label ini sekarang merujuk ke TOTAL per produk ---
     all_columns = ['Sales', 'Profit', 'Quantity']
     feature_labels = {
-        'Sales': 'Penjualan (Sales)',
-        'Profit': 'Keuntungan (Profit)',
-        'Quantity': 'Jumlah (Quantity)'
+        'Sales': 'Total Penjualan (Sales)',
+        'Profit': 'Total Keuntungan (Profit)',
+        'Quantity': 'Total Jumlah (Quantity)'
     }
     
     # --- Bagian 1: Konfigurasi Model Interaktif ---
-    st.header("1. Konfigurasi Model Interaktif")
-    st.markdown("Pilih **Target (Sumbu Y)** yang ingin Anda prediksi dan **Fitur (Sumbu X)** yang ingin Anda gunakan sebagai prediktor.")
+    st.header("1. Konfigurasi Analisis SVR (pada Data Agregat Produk)")
+    st.markdown("Pilih **Target (Sumbu Y)** dan **Fitur (Sumbu X)** yang ingin Anda analisis. Ingat, data ini adalah **Total** per produk unik.")
     
     # Pilihan Target (Y-Axis)
-    # Sesuai permintaan Anda, 'Sales' (index 0) adalah default baru.
     selected_target = st.selectbox(
         "Pilih Target (Sumbu Y) untuk Diprediksi:",
         all_columns,
-        index=0, # Default: 'Sales'
+        index=0, # Default: 'Total Sales'
         format_func=lambda x: feature_labels[x]
     )
     selected_target_label = feature_labels[selected_target]
@@ -339,9 +359,25 @@ if df_clean is not None and len(df_clean) >= 10:
     # Fitur yang tersedia adalah semua kolom KECUALI target yang dipilih
     available_features = [f for f in all_columns if f != selected_target]
     
+    # --- BAGIAN BARU: Menampilkan Peringkat Produk ---
+    st.header(f"Peringkat Produk Terlaris (Berdasarkan {selected_target_label})")
+    st.markdown("Ini adalah jawaban langsung untuk 'produk terlaris'. Ini adalah analisis deskriptif, **bukan** hasil SVR.")
+    with st.expander("Lihat Daftar Peringkat Produk (Top 20)"):
+        if df_product_ranking is not None:
+            # Urutkan berdasarkan target yang dipilih pengguna
+            st.dataframe(
+                df_product_ranking.sort_values(by=selected_target, ascending=False).head(20), 
+                use_container_width=True
+            )
+        else:
+            st.warning("Gagal memuat peringkat produk.")
+            
+    st.markdown("---")
+
+
     # --- Bagian 2: Analisis Seleksi Fitur ---
     st.header(f"2. Analisis Fitur (Target: {selected_target_label})")
-    st.markdown(f"Fitur mana yang memiliki hubungan statistik terkuat dengan **{selected_target_label}**?")
+    st.markdown(f"Fitur mana yang memiliki hubungan statistik terkuat dengan **{selected_target_label}**? (Data Agregat)")
     
     # Jalankan seleksi fitur pada target yang dipilih
     feature_scores_df = run_feature_selection(df_clean, selected_target)
@@ -460,4 +496,4 @@ if df_clean is not None and len(df_clean) >= 10:
     st.markdown("---")
 else:
     if df_clean is not None:
-        st.error(f"Data tersisa ({len(df_clean)} baris) terlalu sedikit untuk analisis SVR (minimal 10 baris diperlukan).")
+        st.error(f"Data tersisa ({len(df_clean)} baris) terlalu sedikit untuk analisis SVR (minimal 10 baris diperlukan). Coba sesuaikan filter di `load_and_process_data`.")
