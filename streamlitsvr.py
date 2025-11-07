@@ -149,10 +149,10 @@ def run_all_svr_analysis(df_clean, selected_feature, selected_target):
     
     for kernel in kernels:
         # Konfigurasi parameter default
-        if kernel == 'linear': svr = SVR(kernel=kernel, C=10)
-        elif kernel == 'poly': svr = SVR(kernel=kernel, C=10, degree=2, gamma='auto')
-        elif kernel == 'rbf': svr = SVR(kernel=kernel, C=10, gamma='auto')
-        elif kernel == 'sigmoid': svr = SVR(kernel=kernel, C=1, gamma=0.1, coef0=0)
+        if kernel == 'linear': svr = SVR(kernel=kernel, C=0.1)
+        elif kernel == 'poly': svr = SVR(kernel=kernel, C=1.8, degree=2, gamma=0.33)
+        elif kernel == 'rbf': svr = SVR(kernel=kernel, C=1.8, gamma=0.33)
+        elif kernel == 'sigmoid': svr = SVR(kernel=kernel, C=1.8, gamma=0.33, coef0=0)
             
         # --- PERBAIKAN KRITIS: BLOK YANG HILANG DIKEMBALIKAN ---
         # Model harus di-fit pada data training
@@ -286,7 +286,7 @@ def run_parameter_tuning(df_clean, selected_feature, selected_target):
     }
     
     # Gunakan SVR dengan kernel RBF
-    svr = SVR(kernel='poly')
+    svr = SVR(kernel='rbf')
     
     # n_iter=15: Coba 15 kombinasi acak
     # cv=3: 3-fold cross-validation
