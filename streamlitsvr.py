@@ -175,7 +175,7 @@ def run_all_svr_analysis(df_clean, selected_feature, selected_target):
         # Konfigurasi parameter default
         if kernel == 'linear': svr = SVR(kernel=kernel, C=0.1)
         elif kernel == 'poly': svr = SVR(kernel=kernel, C=1.8, degree=2, gamma=0.33)
-        elif kernel == 'rbf': svr = SVR(kernel=kernel, C=1.8, gamma=0.33)
+        elif kernel == 'rbf': svr = SVR(kernel=kernel, C=85, gamma=0.01)
         elif kernel == 'sigmoid': svr = SVR(kernel=kernel, C=1.8, gamma=0.33, coef0=0)
             
         # Model harus di-fit pada data training
