@@ -85,7 +85,7 @@ def load_and_process_data():
     ]
     
     # Sampling yang Aman
-    n_samples = 50
+    n_samples = 100
     if len(df_clean) == 0:
         st.warning("Tidak ada data produk yang tersisa setelah filter agregat.")
         return None, df_com
