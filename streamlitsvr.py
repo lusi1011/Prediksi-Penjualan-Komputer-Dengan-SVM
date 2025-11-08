@@ -143,7 +143,7 @@ def run_all_svr_analysis(df_clean, selected_feature, selected_target):
     X = df_clean[selected_feature].values.reshape(-1, 1)
     Y = df_clean[selected_target].values.reshape(-1, 1)
 
-    test_split_size = 0.6
+    test_split_size = 0.5
     if len(df_clean) * test_split_size < 1:
         test_split_size = 0.1 
             
@@ -165,7 +165,7 @@ def run_all_svr_analysis(df_clean, selected_feature, selected_target):
     plot_data_list = []
     
     # DataFrame plot menggunakan nama fitur dan target yang dinamis
-    n_plot_samples = 10
+    n_plot_samples = 20
     df_test_actual = pd.DataFrame({selected_feature: X_test.ravel(), selected_target: Y_test.ravel()})
     if len(df_test_actual) > n_plot_samples:
         df_test_actual = df_test_actual.sample(n=n_plot_samples, random_state=42)
