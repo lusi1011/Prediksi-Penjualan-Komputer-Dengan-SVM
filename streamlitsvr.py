@@ -85,7 +85,7 @@ def load_and_process_data():
     ]
     
     # Sampling yang Aman
-    n_samples = 10
+    n_samples = 50
     if len(df_clean) == 0:
         st.warning("Tidak ada data produk yang tersisa setelah filter agregat.")
         return None, df_com
@@ -143,7 +143,7 @@ def run_all_svr_analysis(df_clean, selected_feature, selected_target):
     X = df_clean[selected_feature].values.reshape(-1, 1)
     Y = df_clean[selected_target].values.reshape(-1, 1)
 
-    test_split_size = 0.05
+    test_split_size = 0.2
     if len(df_clean) * test_split_size < 1:
         test_split_size = 0.1 
             
