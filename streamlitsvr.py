@@ -143,7 +143,7 @@ def run_all_svr_analysis(df_clean, selected_feature, selected_target):
     X = df_clean[selected_feature].values.reshape(-1, 1)
     Y = df_clean[selected_target].values.reshape(-1, 1)
 
-    test_split_size = 0.4
+    test_split_size = 0.6
     if len(df_clean) * test_split_size < 1:
         test_split_size = 0.1 
             
