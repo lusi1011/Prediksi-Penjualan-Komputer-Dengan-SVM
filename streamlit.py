@@ -7,17 +7,12 @@ Original file is located at
     https://colab.research.google.com/drive/1shO92uUQrrLOIZ5jRJSjmyTY4Ah8rROx
 """
 
-# -*- coding: utf-8 -*-
-"""
-Streamlit SVC Classification Analysis
-"""
-
 import streamlit as st
 import pandas as pd
 import numpy as np
 import altair as alt
 from sklearn.model_selection import train_test_split
-from sklearn.preprocessing import StandardScaler, LabelEncoder
+from sklearn.preprocessing import StandardScaler, LabelEncoder, MinMaxScaler # ADDED MinMaxScaler
 from sklearn.feature_selection import SelectKBest, f_classif
 from sklearn.svm import SVC
 from sklearn.metrics import (
@@ -31,7 +26,7 @@ from sklearn.metrics import (
 # Konfigurasi Halaman
 st.set_page_config(layout="wide", page_title="SVC Classification Analysis")
 st.title("Analisis Klasifikasi SVM (SVC)")
-st.caption("Memprediksi Sub-Kategori (Y) berdasarkan Sales, Profit, dan Quantity (X).")
+st.caption("Memprediksi Nama Produk (Y) berdasarkan Sales, Profit, dan Quantity (X).")
 
 # --- 1. Fungsi Pembantu dan Pemrosesan Data ---
 
@@ -52,10 +47,9 @@ def load_and_process_data():
     df_tech = df[df['Category'] == 'Technology']
     df_com = df_tech[df_tech['Sub-Category'] != 'Phones']
     
-    # --- PERUBAHAN KUNCI: TARGET ADALAH SUB-KATEGORI ---
-    # Fitur adalah metrik numerik.
+    # --- PERUBAHAN KUNCI: TARGET ADALAH PRODUCT NAME ---
     features_cols = ['Sales', 'Profit', 'Quantity']
-    target_col = 'Product Name'
+    target_col = 'Product Name' # DIUBAH KE PRODUCT NAME
     
     if target_col not in df_com.columns:
         st.error("Kolom 'Product Name' tidak ditemukan.")
@@ -64,13 +58,24 @@ def load_and_process_data():
     df_relevant = df_com[features_cols + [target_col]].dropna().copy()
 
     # Filter data ekstrem (filter ini sekarang berlaku untuk TOTAL per produk)
-    df_clean = df_relevant[
+    df_clean_initial = df_relevant[
         (df_relevant['Sales'] < 3000) & (df_relevant['Sales'] > 0) &
         (df_relevant['Profit'] > -500) & (df_relevant['Profit'] < 800)
     ]
     
+    # --- PENGURANGAN KELAS KRITIS UNTUK KLASIFIKASI ---
+    # Klasifikasi dengan ratusan kelas (Product Name) sangat sulit dan tidak dapat divisualisasikan.
+    # Kita hanya akan menggunakan 10 produk yang paling sering muncul agar Confusion Matrix dapat dilihat.
+    TOP_N_PRODUCTS = 10
+    top_products = df_clean_initial[target_col].value_counts().head(TOP_N_PRODUCTS).index
+    
+    df_clean = df_clean_initial[df_clean_initial[target_col].isin(top_products)].copy()
+    
+    st.info(f"PERINGATAN KRITIS: Target 'Product Name' memiliki terlalu banyak kelas. Analisis ini dibatasi hanya pada **{TOP_N_PRODUCTS} Nama Produk** yang paling sering muncul agar model klasifikasi dapat berjalan dan divisualisasikan.")
+
+    
     if len(df_clean) < 50: # Butuh lebih banyak data untuk klasifikasi
-        st.warning(f"Data tersisa ({len(df_clean)}) terlalu sedikit. Coba longgarkan filter.")
+        st.warning(f"Data tersisa ({len(df_clean)}) terlalu sedikit setelah memfilter ke {TOP_N_PRODUCTS} produk teratas. Analisis mungkin tidak stabil.")
         return None, None, None, None
         
     # Ambil data Fitur (X) dan Target (Y)
@@ -78,7 +83,7 @@ def load_and_process_data():
     Y_raw = df_clean[target_col]
     
     # --- Encode Target (Y) ---
-    # Mengubah teks ('Accessories', 'Machines') menjadi angka (0, 1)
+    # Mengubah teks ('Product Name 1', 'Product Name 2') menjadi angka (0, 1, ...)
     encoder = LabelEncoder()
     Y = encoder.fit_transform(Y_raw)
     class_names = encoder.classes_
@@ -140,7 +145,7 @@ def run_all_svc_analysis(X, Y, class_names):
         svc = SVC(kernel=kernel, C=1.0, gamma='scale', random_state=42)
         
         # Fit model
-        svc.fit(X_train_scaled, Y_train_scaled)
+        svc.fit(X_train_scaled, Y_train)
         
         # Prediksi
         Y_pred = svc.predict(X_test_scaled)
@@ -185,15 +190,18 @@ def create_confusion_matrix_chart(cm, class_names):
     df_cm = df_cm.stack().reset_index()
     df_cm.columns = ['Aktual', 'Prediksi', 'Jumlah']
 
+    # Ukuran Chart harus disesuaikan jika jumlah kelas banyak (misal 10)
+    base_step = max(50, 400 // len(class_names)) # Sesuaikan ukuran kotak agar tetap terbaca
+
     # Buat chart dasar
     base = alt.Chart(df_cm).encode(
-        x=alt.X('Prediksi:O', axis=alt.Axis(title="Prediksi", labelAngle=0)),
+        x=alt.X('Prediksi:O', axis=alt.Axis(title="Prediksi", labelAngle=-45)), # Rotate labels for better fit
         y=alt.Y('Aktual:O', axis=alt.Axis(title="Aktual")),
         tooltip=['Aktual', 'Prediksi', 'Jumlah']
     ).properties(
         title='Confusion Matrix',
-        width=alt.Step(80), # Buat kotak lebih besar
-        height=alt.Step(80)
+        width=alt.Step(base_step), 
+        height=alt.Step(base_step)
     )
 
     # Buat heatmap
@@ -227,13 +235,13 @@ if X_data is not None and Y_data is not None and class_names is not None:
     features_cols = ['Sales', 'Profit', 'Quantity']
 
     st.header("1. Target Klasifikasi (Y)")
-    st.markdown(f"Tujuan kita adalah memprediksi salah satu dari **{len(class_names)} kelas** berikut:")
+    st.markdown(f"Tujuan kita adalah memprediksi salah satu dari **{len(class_names)} Nama Produk** yang paling sering muncul:")
     st.json(list(class_names))
     st.markdown("---")
 
     # --- Bagian 2: Analisis Seleksi Fitur ---
     st.header(f"2. Analisis Fitur (X)")
-    st.markdown(f"Fitur mana yang memiliki hubungan statistik terkuat dengan **Sub-Kategori**?")
+    st.markdown(f"Fitur mana yang memiliki hubungan statistik terkuat dengan **Nama Produk**?")
     
     feature_scores_df = run_feature_selection(X_data, Y_data, features_cols)
     
@@ -263,8 +271,8 @@ if X_data is not None and Y_data is not None and class_names is not None:
         st.subheader("Penjelasan Metrik:")
         st.markdown(f"""
         - **Akurasi**: Persentase total tebakan yang benar.
-        - **Presisi (Weighted)**: Seberapa akurat tebakan positif (misal: 'Copiers')? Dihitung rata-rata tertimbang di semua kelas.
-        - **Recall (Weighted)**: Berapa banyak dari kelas aktual (misal: semua 'Copiers') yang berhasil ditemukan?
+        - **Presisi (Weighted)**: Seberapa akurat tebakan positif (misal: 'Nama Produk A')? Dihitung rata-rata tertimbang di semua kelas.
+        - **Recall (Weighted)**: Berapa banyak dari kelas aktual (misal: semua 'Nama Produk A') yang berhasil ditemukan?
         - **F1-Score (Weighted)**: Keseimbangan antara Presisi dan Recall. Ini seringkali metrik terbaik untuk perbandingan.
         - **Total Benar (TP)**: Jumlah total data (dari test set) yang diklasifikasikan dengan benar.
         - **Total Salah (FP/FN)**: Jumlah total data yang salah diklasifikasikan.
