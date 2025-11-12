@@ -10,310 +10,154 @@ Original file is located at
 import streamlit as st
 import pandas as pd
 import numpy as np
-import altair as alt
-from sklearn.model_selection import train_test_split
-from sklearn.preprocessing import StandardScaler, LabelEncoder, MinMaxScaler # ADDED MinMaxScaler
-from sklearn.feature_selection import SelectKBest, f_classif
-from sklearn.svm import SVC
-from sklearn.metrics import (
-    accuracy_score, 
-    precision_score, 
-    recall_score, 
-    f1_score, 
-    confusion_matrix
-)
+import matplotlib.pyplot as plt
+import seaborn as sns
+from sklearn.svm import SVR
+from sklearn.model_selection import train_test_split, GridSearchCV
+from sklearn.preprocessing import StandardScaler
+from sklearn.feature_selection import SelectKBest, f_regression
+from sklearn.metrics import mean_squared_error, r2_score
 
-# Konfigurasi Halaman
-st.set_page_config(layout="wide", page_title="SVC Classification Analysis")
-st.title("Analisis Klasifikasi SVM (SVC)")
-st.caption("Memprediksi Nama Produk (Y) berdasarkan Sales, Profit, dan Quantity (X).")
+# -----------------------------
+# Fungsi bantu
+# -----------------------------
+def mean_absolute_percentage_error(y_true, y_pred):
+    return np.mean(np.abs((y_true - y_pred) / (y_true + 1e-6))) * 100
 
-# --- 1. Fungsi Pembantu dan Pemrosesan Data ---
+st.set_page_config(page_title="Prediksi SVR SuperStore", layout="wide")
+st.title("📊 Analisis Prediksi Penjualan Produk (SVR)")
 
-@st.cache_data
-def load_and_process_data():
-    """Memuat, memfilter, dan mempersiapkan data untuk KLASIFIKASI."""
-    try:
-        df = pd.read_csv('SuperStore_Sales_Dataset.csv')
-        df = df.rename(columns={'Row ID+O6G3A1:R6': 'Row ID'})
-    except FileNotFoundError:
-        st.error("File 'SuperStore_Sales_Dataset.csv' tidak ditemukan. Analisis dibatalkan.")
-        return None, None, None, None
-    except Exception as e:
-        st.error(f"Error saat membaca CSV: {e}")
-        return None, None, None, None
-        
-    # Filter data (Technology, non-Phones)
-    df_tech = df[df['Category'] == 'Technology']
-    df_com = df_tech[df_tech['Sub-Category'] != 'Phones']
-    
-    # --- PERUBAHAN KUNCI: TARGET ADALAH PRODUCT NAME ---
-    features_cols = ['Sales', 'Profit', 'Quantity']
-    target_col = 'Product Name' # DIUBAH KE PRODUCT NAME
-    
-    if target_col not in df_com.columns:
-        st.error("Kolom 'Product Name' tidak ditemukan.")
-        return None, None, None, None
-        
-    df_relevant = df_com[features_cols + [target_col]].dropna().copy()
+# Upload file CSV
+uploaded_file = st.file_uploader("📂 Unggah file dataset (CSV)", type=["csv"])
 
-    # Filter data ekstrem (filter ini sekarang berlaku untuk TOTAL per produk)
-    df_clean_initial = df_relevant[
-        (df_relevant['Sales'] < 3000) & (df_relevant['Sales'] > 0) &
-        (df_relevant['Profit'] > -500) & (df_relevant['Profit'] < 800)
-    ]
-    
-    # --- PENGURANGAN KELAS KRITIS UNTUK KLASIFIKASI ---
-    # Klasifikasi dengan ratusan kelas (Product Name) sangat sulit dan tidak dapat divisualisasikan.
-    # Kita hanya akan menggunakan 10 produk yang paling sering muncul agar Confusion Matrix dapat dilihat.
-    TOP_N_PRODUCTS = 10
-    top_products = df_clean_initial[target_col].value_counts().head(TOP_N_PRODUCTS).index
-    
-    df_clean = df_clean_initial[df_clean_initial[target_col].isin(top_products)].copy()
-    
-    st.info(f"PERINGATAN KRITIS: Target 'Product Name' memiliki terlalu banyak kelas. Analisis ini dibatasi hanya pada **{TOP_N_PRODUCTS} Nama Produk** yang paling sering muncul agar model klasifikasi dapat berjalan dan divisualisasikan.")
+if uploaded_file is not None:
+    df = pd.read_csv(uploaded_file)
+    df.columns = df.columns.str.strip()
 
-    
-    if len(df_clean) < 50: # Butuh lebih banyak data untuk klasifikasi
-        st.warning(f"Data tersisa ({len(df_clean)}) terlalu sedikit setelah memfilter ke {TOP_N_PRODUCTS} produk teratas. Analisis mungkin tidak stabil.")
-        return None, None, None, None
-        
-    # Ambil data Fitur (X) dan Target (Y)
-    X = df_clean[features_cols]
-    Y_raw = df_clean[target_col]
-    
-    # --- Encode Target (Y) ---
-    # Mengubah teks ('Product Name 1', 'Product Name 2') menjadi angka (0, 1, ...)
-    encoder = LabelEncoder()
-    Y = encoder.fit_transform(Y_raw)
-    class_names = encoder.classes_
-    
-    # Periksa apakah kita punya cukup kelas
-    if len(class_names) < 2:
-        st.error("Data yang difilter hanya menghasilkan satu kelas. Klasifikasi tidak mungkin dilakukan.")
-        return None, None, None, None
-        
-    # Sampling yang Aman
-    n_samples = 500
-    if len(df_clean) < n_samples:
-        n_samples = len(df_clean)
-        
-    df_sample = df_clean.sample(n=n_samples, random_state=42)
-    X_sample = df_sample[features_cols]
-    Y_sample = encoder.transform(df_sample[target_col])
-    
-    return X_sample, Y_sample, class_names, df_com
+    st.subheader("🔍 Cuplikan Dataset")
+    st.dataframe(df.head())
 
+    # --- Pra-pemrosesan Data ---
+    df_filtered = df[
+        (df['Category'] == 'Technology') &
+        (df['Sub-Category'] != 'Phones')
+    ].copy()
 
-@st.cache_data
-def run_feature_selection(X, Y, features_cols):
-    """Menjalankan SelectKBest untuk menemukan fitur terbaik untuk KLASIFIKASI."""
-    if X is None or len(X) < 10:
-        return pd.DataFrame()
+    st.write(f"Jumlah data setelah filter: **{len(df_filtered)}** dari total **{len(df)}**")
 
-    # Scaling diperlukan agar F-scores dapat dibandingkan
-    scaler = MinMaxScaler()
-    X_scaled = scaler.fit_transform(X)
-    
-    # --- PERUBAHAN: Gunakan f_classif untuk klasifikasi ---
-    selector = SelectKBest(f_classif, k='all')
-    selector.fit(X_scaled, Y)
-    
-    scores_df = pd.DataFrame({
-        'Fitur': features_cols,
-        'F-Score': selector.scores_
-    }).sort_values(by='F-Score', ascending=False)
-    
-    return scores_df
+    if df_filtered.empty:
+        st.error("❌ Setelah filtering, data kosong. Tidak dapat melanjutkan.")
+        st.stop()
 
-@st.cache_data(show_spinner="Menjalankan Klasifikasi SVC untuk semua kernel...")
-def run_all_svc_analysis(X, Y, class_names):
-    """Menjalankan SVC untuk semua kernel dan menghitung metrik."""
-    
-    X_train, X_test, Y_train, Y_test = train_test_split(X, Y, test_size=0.3, random_state=42, stratify=Y)
-    
-    scaler = StandardScaler()
-    X_train_scaled = scaler.fit_transform(X_train)
-    X_test_scaled = scaler.transform(X_test)
+    # Agregasi data per produk
+    product_stats = df_filtered.groupby('Product Name').agg(
+        Total_Quantity=('Quantity', 'sum'),
+        Mean_Sales=('Sales', 'mean'),
+        Mean_Profit=('Profit', 'mean'),
+        Count_Orders=('Order ID', 'nunique')
+    ).reset_index()
 
-    kernels = ['linear', 'poly', 'rbf', 'sigmoid']
-    model_results = []
-    confusion_matrices = {}
-    
-    for kernel in kernels:
-        # Konfigurasi SVC standar
-        svc = SVC(kernel=kernel, C=1.0, gamma='scale', random_state=42)
-        
-        # Fit model
-        svc.fit(X_train_scaled, Y_train)
-        
-        # Prediksi
-        Y_pred = svc.predict(X_test_scaled)
-        
-        # Hitung Metrik
-        # 'weighted' diperlukan untuk multi-kelas yang tidak seimbang
-        accuracy = accuracy_score(Y_test, Y_pred)
-        precision = precision_score(Y_test, Y_pred, average='weighted', zero_division=0)
-        recall = recall_score(Y_test, Y_pred, average='weighted', zero_division=0)
-        f1 = f1_score(Y_test, Y_pred, average='weighted', zero_division=0)
-        
-        # Hitung Confusion Matrix
-        cm = confusion_matrix(Y_test, Y_pred, labels=np.arange(len(class_names)))
-        
-        # Hitung Total TP, TN, FP, FN (secara 'micro')
-        # Total Benar adalah jumlah diagonal
-        total_benar = np.diag(cm).sum()
-        # Total Salah adalah semua selain diagonal
-        total_salah = cm.sum() - total_benar
-        
-        model_results.append({
-            'Kernel': kernel,
-            'Akurasi': accuracy,
-            'Presisi (Weighted)': precision,
-            'Recall (Weighted)': recall,
-            'F1-Score (Weighted)': f1,
-            'Total Benar (TP)': total_benar,
-            'Total Salah (FP/FN)': total_salah
-        })
-        
-        confusion_matrices[kernel] = cm
+    product_stats = product_stats.replace([np.inf, -np.inf], np.nan).dropna()
 
-    df_metrics = pd.DataFrame(model_results).sort_values(by='F1-Score (Weighted)', ascending=False)
-    
-    return df_metrics, confusion_matrices
+    X_products = product_stats[['Product Name', 'Mean_Sales', 'Mean_Profit', 'Count_Orders']]
+    y_products = product_stats['Total_Quantity']
+    feature_cols = ['Mean_Sales', 'Mean_Profit', 'Count_Orders']
 
-def create_confusion_matrix_chart(cm, class_names):
-    """Membuat plot heatmap Altair untuk Confusion Matrix."""
-    
-    # Ubah matrix menjadi DataFrame yang rapi
-    df_cm = pd.DataFrame(cm, index=class_names, columns=class_names)
-    df_cm = df_cm.stack().reset_index()
-    df_cm.columns = ['Aktual', 'Prediksi', 'Jumlah']
-
-    # Ukuran Chart harus disesuaikan jika jumlah kelas banyak (misal 10)
-    base_step = max(50, 400 // len(class_names)) # Sesuaikan ukuran kotak agar tetap terbaca
-
-    # Buat chart dasar
-    base = alt.Chart(df_cm).encode(
-        x=alt.X('Prediksi:O', axis=alt.Axis(title="Prediksi", labelAngle=-45)), # Rotate labels for better fit
-        y=alt.Y('Aktual:O', axis=alt.Axis(title="Aktual")),
-        tooltip=['Aktual', 'Prediksi', 'Jumlah']
-    ).properties(
-        title='Confusion Matrix',
-        width=alt.Step(base_step), 
-        height=alt.Step(base_step)
+    # Split data
+    X_train, X_test_full, y_train, y_test = train_test_split(
+        X_products, y_products, test_size=0.2, random_state=42
     )
+    X_test = X_test_full[feature_cols]
+    X_train = X_train[feature_cols]
 
-    # Buat heatmap
-    heatmap = base.mark_rect().encode(
-        color=alt.Color('Jumlah:Q', 
-                        scale=alt.Scale(range='heatmap'),
-                        legend=alt.Legend(title="Jumlah"))
-    )
+    # Scaling
+    scaler_X = StandardScaler()
+    X_train_scaled = scaler_X.fit_transform(X_train)
+    X_test_scaled = scaler_X.transform(X_test)
+    scaler_y = StandardScaler()
+    y_train_scaled = scaler_y.fit_transform(y_train.values.reshape(-1, 1)).flatten()
 
-    # Tambahkan teks (angka) di atas heatmap
-    text = base.mark_text(baseline='middle').encode(
-        text=alt.Text('Jumlah:Q'),
-        color=alt.value('black') # Ganti warna teks jika perlu
-    )
+    # Feature Selection
+    selector = SelectKBest(score_func=f_regression, k=1)
+    X_train_selected_all = selector.fit_transform(X_train_scaled, y_train_scaled.reshape(-1, 1))
+    X_test_selected_all = selector.transform(X_test_scaled)
+    selected_indices = selector.get_support(indices=True)
+    selected_feature_names = [feature_cols[i] for i in selected_indices]
+    selected_feature_name_for_plot = selected_feature_names[0]
 
-    chart = heatmap + text
-    return chart
+    st.success("✅ Data berhasil diproses dan siap untuk pelatihan model.")
 
-# --- 2. Main Streamlit Execution ---
+    # --- Hyperparameter Tuning ---
+    with st.spinner("🔄 Melatih model SVR..."):
+        param_grid_rbf = {'C': [0.1, 1, 10], 'gamma': [0.1, 1, 'scale']}
+        grid_search_rbf = GridSearchCV(SVR(kernel='rbf'), param_grid_rbf, cv=5, scoring='r2', n_jobs=-1)
+        grid_search_rbf.fit(X_train_selected_all, y_train_scaled)
+        best_rbf_svr = grid_search_rbf.best_estimator_
+        best_rbf_params = grid_search_rbf.best_params_
 
-X_data, Y_data, class_names, df_raw_filtered = load_and_process_data()
+        param_grid_poly = {
+            'C': [0.1, 1, 10],
+            'gamma': [0.1, 1, 'scale'],
+            'coef0': [0, 1, 2],
+            'degree': [2, 3, 4]
+        }
+        grid_search_poly = GridSearchCV(SVR(kernel='poly'), param_grid_poly, cv=5, scoring='r2', n_jobs=-1)
+        grid_search_poly.fit(X_train_selected_all, y_train_scaled)
+        best_poly_svr = grid_search_poly.best_estimator_
+        best_poly_params = best_poly_svr.get_params()
 
-# Tampilkan Data Mentah
-if df_raw_filtered is not None:
-    with st.expander("Lihat Data Mentah (Kategori: Technology, Bukan Phones)"):
-        st.write(df_raw_filtered)
+        param_grid_sigmoid = {
+            'C': [0.1, 1, 10],
+            'gamma': [0.1, 1, 'scale'],
+            'coef0': [-2, -1, 0, 1, 2]
+        }
+        grid_search_sigmoid = GridSearchCV(SVR(kernel='sigmoid'), param_grid_sigmoid, cv=5, scoring='r2', n_jobs=-1)
+        grid_search_sigmoid.fit(X_train_selected_all, y_train_scaled)
+        best_sigmoid_svr = grid_search_sigmoid.best_estimator_
+        best_sigmoid_params = best_sigmoid_svr.get_params()
 
-# Hanya jalankan jika data berhasil di-load dan diproses
-if X_data is not None and Y_data is not None and class_names is not None:
-    
-    features_cols = ['Sales', 'Profit', 'Quantity']
+        model_linear = SVR(kernel='linear', C=10, gamma='scale').fit(X_train_selected_all, y_train_scaled)
 
-    st.header("1. Target Klasifikasi (Y)")
-    st.markdown(f"Tujuan kita adalah memprediksi salah satu dari **{len(class_names)} Nama Produk** yang paling sering muncul:")
-    st.json(list(class_names))
-    st.markdown("---")
+    model_dict = {
+        'Linear': model_linear,
+        'Poly Tuned': best_poly_svr,
+        'RBF Tuned': best_rbf_svr,
+        'Sigmoid Tuned': best_sigmoid_svr
+    }
 
-    # --- Bagian 2: Analisis Seleksi Fitur ---
-    st.header(f"2. Analisis Fitur (X)")
-    st.markdown(f"Fitur mana yang memiliki hubungan statistik terkuat dengan **Nama Produk**?")
-    
-    feature_scores_df = run_feature_selection(X_data, Y_data, features_cols)
-    
-    if not feature_scores_df.empty:
-        st.dataframe(feature_scores_df, use_container_width=True)
-        st.caption("Metode: `SelectKBest` dengan `f_classif` (ANOVA F-test). F-Score yang lebih tinggi menunjukkan fitur yang lebih baik untuk klasifikasi.")
-    else:
-        st.warning("Gagal menjalankan analisis fitur.")
-    
-    st.markdown("---")
+    # --- Evaluasi Model ---
+    results = []
+    for name, model in model_dict.items():
+        y_pred_scaled = model.predict(X_test_selected_all)
+        y_pred = scaler_y.inverse_transform(y_pred_scaled.reshape(-1, 1)).flatten()
+        mse = mean_squared_error(y_test, y_pred)
+        r2 = r2_score(y_test, y_pred)
+        mape = mean_absolute_percentage_error(y_test, y_pred)
+        results.append({'Model': name, 'R2': r2, 'MSE': mse, 'MAPE': mape})
 
-    # --- Bagian 3: Menampilkan Metrik Evaluasi ---
-    st.header(f"3. Perbandingan Metrik Kernel SVC")
-    
-    df_metrics, cm_dict = run_all_svc_analysis(X_data, Y_data, class_names)
-    
-    if not df_metrics.empty:
-        # Format df untuk tampilan
-        df_display = df_metrics.copy()
-        df_display['Akurasi'] = df_display['Akurasi'].map('{:.2%}'.format)
-        df_display['Presisi (Weighted)'] = df_display['Presisi (Weighted)'].map('{:.2%}'.format)
-        df_display['Recall (Weighted)'] = df_display['Recall (Weighted)'].map('{:.2%}'.format)
-        df_display['F1-Score (Weighted)'] = df_display['F1-Score (Weighted)'].map('{:.2%}'.format)
-        
-        st.dataframe(df_display, use_container_width=True)
-        
-        st.subheader("Penjelasan Metrik:")
-        st.markdown(f"""
-        - **Akurasi**: Persentase total tebakan yang benar.
-        - **Presisi (Weighted)**: Seberapa akurat tebakan positif (misal: 'Nama Produk A')? Dihitung rata-rata tertimbang di semua kelas.
-        - **Recall (Weighted)**: Berapa banyak dari kelas aktual (misal: semua 'Nama Produk A') yang berhasil ditemukan?
-        - **F1-Score (Weighted)**: Keseimbangan antara Presisi dan Recall. Ini seringkali metrik terbaik untuk perbandingan.
-        - **Total Benar (TP)**: Jumlah total data (dari test set) yang diklasifikasikan dengan benar.
-        - **Total Salah (FP/FN)**: Jumlah total data yang salah diklasifikasikan.
-        """)
-    else:
-        st.warning("Gagal menghitung metrik model.")
+    results_df = pd.DataFrame(results).sort_values(by='R2', ascending=False)
+    st.subheader("📈 Hasil Evaluasi Model")
+    st.dataframe(results_df.style.highlight_max(axis=0, color='lightgreen'))
 
-    st.markdown("---")
-    
-    # --- Bagian 4: Visualisasi Confusion Matrix ---
-    st.header("4. Visualisasi Confusion Matrix")
-    
-    if cm_dict:
-        # Tentukan kernel terbaik dari tabel metrik
-        best_kernel = df_metrics.iloc[0]['Kernel']
-        
-        st.info(f"Berdasarkan F1-Score, kernel terbaik adalah **{best_kernel}**.")
-        
-        # Buat tab untuk setiap kernel
-        tab_list = [f"Kernel: {k.capitalize()}" for k in df_metrics['Kernel']]
-        tabs = st.tabs(tab_list)
-        
-        for i, kernel_name in enumerate(df_metrics['Kernel']):
-            with tabs[i]:
-                st.subheader(f"Confusion Matrix untuk Kernel: {kernel_name.capitalize()}")
-                
-                cm_chart = create_confusion_matrix_chart(cm_dict[kernel_name], class_names)
-                st.altair_chart(cm_chart, use_container_width=True)
-                
-                # Penjelasan CM
-                st.markdown(f"""
-                **Cara Membaca:**
-                - **Sumbu Y (Aktual)**: Label yang sebenarnya dari data.
-                - **Sumbu X (Prediksi)**: Label yang diprediksi oleh model.
-                - **Diagonal (kiri-atas ke kanan-bawah)**: Tebakan yang **Benar** (True Positives). Semakin tinggi angkanya, semakin baik.
-                - **Di luar Diagonal**: Tebakan yang **Salah** (False Positives / False Negatives). Semakin rendah angkanya, semakin baik.
-                """)
-    
-    else:
-        st.warning("Gagal menghasilkan Confusion Matrices.")
+    # --- Visualisasi ---
+    st.subheader("🎨 Visualisasi Hasil Prediksi")
+    X_test_original = scaler_X.inverse_transform(X_test_scaled)
+    X_test_selected_original_plot = X_test_original[:, selected_indices[0]]
 
+    fig, axes = plt.subplots(1, 4, figsize=(20, 5), sharex=True, sharey=True)
+    sns.set_style("whitegrid")
+
+    for i, (name, model) in enumerate(model_dict.items()):
+        ax = axes[i]
+        y_pred_scaled = model.predict(X_test_selected_all)
+        y_pred = scaler_y.inverse_transform(y_pred_scaled.reshape(-1, 1)).flatten()
+        ax.scatter(X_test_selected_original_plot, y_test, color='gray', label='Aktual', alpha=0.6)
+        ax.plot(X_test_selected_original_plot, y_pred, label=f'Prediksi {name}', linewidth=2)
+        ax.set_title(name)
+        ax.legend()
+    plt.tight_layout()
+    st.pyplot(fig)
+
+    st.success("✅ Semua proses selesai! Model SVR berhasil dijalankan dan divisualisasikan.")
 else:
-    if df_raw_filtered is not None:
-        st.error(f"Data tersisa tidak cukup untuk analisis klasifikasi. Coba sesuaikan filter di `load_and_process_data`.")
+    st.info("👆 Unggah file CSV untuk memulai analisis.")
