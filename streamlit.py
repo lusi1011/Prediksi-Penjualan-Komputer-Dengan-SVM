@@ -64,11 +64,11 @@ if uploaded_file is not None:
     feature_cols = ['Mean_Sales', 'Mean_Profit', 'Count_Orders']
 
     # Split data
-    X_train, X_test_full, y_train, y_test = train_test_split(
+    X_train_full, X_test_full, y_train, y_test = train_test_split(
         X_products, y_products, test_size=0.2, random_state=42
     )
     X_test = X_test_full[feature_cols]
-    X_train = X_train[feature_cols]
+    X_train = X_train_full[feature_cols]
 
     # Scaling
     scaler_X = StandardScaler()
@@ -79,7 +79,9 @@ if uploaded_file is not None:
 
     # Feature Selection
     selector = SelectKBest(score_func=f_regression, k=1)
-    X_train_selected_all = selector.fit_transform(X_train_scaled, y_train_scaled.reshape(-1, 1))
+    # Fit pada data latih
+    X_train_selected_all = selector.fit_transform(X_train_scaled, y_train_scaled)
+    # Transform pada data tes
     X_test_selected_all = selector.transform(X_test_scaled)
     selected_indices = selector.get_support(indices=True)
     selected_feature_names = [feature_cols[i] for i in selected_indices]
@@ -137,40 +139,70 @@ if uploaded_file is not None:
 
     results_df = pd.DataFrame(results).sort_values(by='R2', ascending=False)
     st.subheader("📈 Hasil Evaluasi Model")
-    st.dataframe(results_df.style.highlight_max(axis=0, color='lightgreen'))
+    st.dataframe(results_df.style.highlight_max(axis=0, subset=['R2'], color='lightgreen').highlight_min(axis=0, subset=['MSE', 'MAPE'], color='lightpink'))
 
     # --- Visualisasi ---
-st.subheader("🎨 Visualisasi Hasil Prediksi")
+    st.subheader("🎨 Visualisasi Hasil Prediksi")
 
-X_test_original = scaler_X.inverse_transform(X_test_scaled)
-X_test_selected_original_plot = X_test_original[:, selected_indices[0]]
+    # Ambil nilai fitur *original* (sebelum scaling) dari data tes untuk sumbu X
+    X_test_original = scaler_X.inverse_transform(X_test_scaled)
+    X_test_selected_original_plot = X_test_original[:, selected_indices[0]]
 
-fig, axes = plt.subplots(1, 4, figsize=(20, 5), sharex=True, sharey=True)
-sns.set_style("whitegrid")
+    fig, axes = plt.subplots(1, 4, figsize=(20, 5), sharey=True) # Share Y-axis
+    sns.set_style("whitegrid")
 
-for i, (name, model) in enumerate(model_dict.items()):
-    ax = axes[i]
-    y_pred_scaled = model.predict(X_test_selected_all)
-    y_pred = scaler_y.inverse_transform(y_pred_scaled.reshape(-1, 1)).flatten()
+    for i, (name, model) in enumerate(model_dict.items()):
+        ax = axes[i]
 
-    # 🔧 Urutkan berdasarkan nilai X agar garisnya halus
-    sort_idx = np.argsort(X_test_selected_original_plot)
-    x_sorted = X_test_selected_original_plot[sort_idx]
-    y_pred_sorted = y_pred[sort_idx]
-    y_actual_sorted = y_test.values[sort_idx]
+        # --- PERBAIKAN UNTUK GARIS HALUS ---
+        
+        # 1. Buat range X yang halus di 'original space' (unscaled)
+        x_min_orig = X_test_selected_original_plot.min()
+        x_max_orig = X_test_selected_original_plot.max()
+        # Buat 300 titik data halus antara min dan max
+        x_smooth_orig = np.linspace(x_min_orig, x_max_orig, 300)
 
-    # Scatter titik aktual
-    ax.scatter(x_sorted, y_actual_sorted, color='gray', label='Aktual', alpha=0.6)
+        # 2. Kita perlu scaling X halus ini seperti data training
+        # Ambil mean dan std dari scaler UNTUK FITUR YANG DIPILIH
+        selected_feature_index = selected_indices[0]
+        mean_feat = scaler_X.mean_[selected_feature_index]
+        std_feat = scaler_X.scale_[selected_feature_index]
+        
+        # 3. Lakukan scaling manual pada data halus
+        x_smooth_scaled = (x_smooth_orig - mean_feat) / std_feat
+        
+        # 4. Reshape agar bisa di-predict oleh model (model mengharapkan input 2D)
+        x_smooth_scaled_reshaped = x_smooth_scaled.reshape(-1, 1)
 
-    # Garis prediksi yang sudah diurutkan
-    ax.plot(x_sorted, y_pred_sorted, color='blue', linewidth=2, label=f'Prediksi {name}')
+        # 5. Lakukan prediksi pada data halus yang sudah di-scale
+        y_smooth_pred_scaled = model.predict(x_smooth_scaled_reshaped)
 
-    ax.set_title(name)
-    ax.legend()
-    ax.grid(True, linestyle='--', alpha=0.7)
+        # 6. Kembalikan Y (hasil prediksi) ke 'original space'
+        y_smooth_pred_orig = scaler_y.inverse_transform(y_smooth_pred_scaled.reshape(-1, 1)).flatten()
 
-plt.tight_layout()
-st.pyplot(fig)
+        # --- Plotting ---
+        
+        # 7. Scatter plot untuk data *aktual* (titik-titik abu-abu)
+        # Kita gunakan data tes yang asli
+        ax.scatter(X_test_selected_original_plot, y_test, color='gray', label='Aktual', alpha=0.5)
+
+        # 8. Plot garis prediksi yang HALUS (garis biru)
+        ax.plot(x_smooth_orig, y_smooth_pred_orig, color='blue', linewidth=2, label=f'Prediksi {name}')
+        
+        # --- Akhir Perbaikan ---
+
+        ax.set_title(name)
+        ax.legend()
+        ax.grid(True, linestyle='--', alpha=0.7)
+        
+        # Tambahkan label
+        ax.set_xlabel(selected_feature_name_for_plot)
+        if i == 0: # Hanya set label Y di plot pertama
+            ax.set_ylabel('Total Quantity (Prediksi vs Aktual)')
+
+
+    plt.tight_layout()
+    st.pyplot(fig)
 
     st.success("✅ Semua proses selesai! Model SVR berhasil dijalankan dan divisualisasikan.")
 else:
