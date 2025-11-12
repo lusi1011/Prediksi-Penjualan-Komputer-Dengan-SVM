@@ -140,23 +140,37 @@ if uploaded_file is not None:
     st.dataframe(results_df.style.highlight_max(axis=0, color='lightgreen'))
 
     # --- Visualisasi ---
-    st.subheader("🎨 Visualisasi Hasil Prediksi")
-    X_test_original = scaler_X.inverse_transform(X_test_scaled)
-    X_test_selected_original_plot = X_test_original[:, selected_indices[0]]
+st.subheader("🎨 Visualisasi Hasil Prediksi")
 
-    fig, axes = plt.subplots(1, 4, figsize=(20, 5), sharex=True, sharey=True)
-    sns.set_style("whitegrid")
+X_test_original = scaler_X.inverse_transform(X_test_scaled)
+X_test_selected_original_plot = X_test_original[:, selected_indices[0]]
 
-    for i, (name, model) in enumerate(model_dict.items()):
-        ax = axes[i]
-        y_pred_scaled = model.predict(X_test_selected_all)
-        y_pred = scaler_y.inverse_transform(y_pred_scaled.reshape(-1, 1)).flatten()
-        ax.scatter(X_test_selected_original_plot, y_test, color='gray', label='Aktual', alpha=0.6)
-        ax.plot(X_test_selected_original_plot, y_pred, label=f'Prediksi {name}', linewidth=2)
-        ax.set_title(name)
-        ax.legend()
-    plt.tight_layout()
-    st.pyplot(fig)
+fig, axes = plt.subplots(1, 4, figsize=(20, 5), sharex=True, sharey=True)
+sns.set_style("whitegrid")
+
+for i, (name, model) in enumerate(model_dict.items()):
+    ax = axes[i]
+    y_pred_scaled = model.predict(X_test_selected_all)
+    y_pred = scaler_y.inverse_transform(y_pred_scaled.reshape(-1, 1)).flatten()
+
+    # 🔧 Urutkan berdasarkan nilai X agar garisnya halus
+    sort_idx = np.argsort(X_test_selected_original_plot)
+    x_sorted = X_test_selected_original_plot[sort_idx]
+    y_pred_sorted = y_pred[sort_idx]
+    y_actual_sorted = y_test.values[sort_idx]
+
+    # Scatter titik aktual
+    ax.scatter(x_sorted, y_actual_sorted, color='gray', label='Aktual', alpha=0.6)
+
+    # Garis prediksi yang sudah diurutkan
+    ax.plot(x_sorted, y_pred_sorted, color='blue', linewidth=2, label=f'Prediksi {name}')
+
+    ax.set_title(name)
+    ax.legend()
+    ax.grid(True, linestyle='--', alpha=0.7)
+
+plt.tight_layout()
+st.pyplot(fig)
 
     st.success("✅ Semua proses selesai! Model SVR berhasil dijalankan dan divisualisasikan.")
 else:
