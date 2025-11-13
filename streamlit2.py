@@ -30,9 +30,10 @@ st.title("📊 Analisis Prediksi Penjualan Produk (SVR)")
 # -----------------------------
 # Upload File
 # -----------------------------
+uploaded_file = st.file_uploader("📂 Unggah file dataset (CSV)", type=["csv"])
 
 if uploaded_file is not None:
-    df = pd.read_csv(SuperStore_Sales_Dataset.csv)
+    df = pd.read_csv(uploaded_file)
     df.columns = df.columns.str.strip()
 
     st.subheader("🔍 Cuplikan Dataset")
@@ -62,7 +63,7 @@ if uploaded_file is not None:
 
     # --- Random Sampling Kecil (10 sampel acak) ---
     st.subheader("🧩 Sampling Data Acak")
-    product_stats_sampled = product_stats.sample(n=20, random_state=42)
+    product_stats_sampled = product_stats.sample(n=10, random_state=42)
     st.write("📊 Menggunakan 10 data sampel acak untuk analisis:")
     st.dataframe(product_stats_sampled)
 
