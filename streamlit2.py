@@ -63,7 +63,7 @@ if uploaded_file is not None:
 
     # --- Random Sampling Kecil (10 sampel acak) ---
     st.subheader("🧩 Sampling Data Acak")
-    product_stats_sampled = product_stats.sample(n=10, random_state=42)
+    product_stats_sampled = product_stats.sample(frac=0.1, random_state=42)
     st.write("📊 Menggunakan 10 data sampel acak untuk analisis:")
     st.dataframe(product_stats_sampled)
 
