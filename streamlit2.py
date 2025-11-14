@@ -30,11 +30,10 @@ st.title("📊 Analisis Prediksi Penjualan Produk (SVR)")
 # -----------------------------
 # Upload File
 # -----------------------------
-# Tentukan nama file
-    file_name = "SuperStore_Sales_Dataset.csv"
+    uploaded_file = st.file_uploader("📂 Unggah file dataset (CSV)", type=["csv"])
 
-# Muat dataset
-    df = pd.read_csv(file_name)
+if uploaded_file is not None:
+    df = pd.read_csv(uploaded_file)
     df.columns = df.columns.str.strip()
 
     st.subheader("🔍 Cuplikan Dataset")
