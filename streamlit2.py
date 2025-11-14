@@ -34,7 +34,6 @@ uploaded_file = "SuperStore_Sales_Dataset.csv"
 
 if uploaded_file is not None:
     df = pd.read_csv(uploaded_file)
-    df.columns = df.columns.str.strip()
 
     st.subheader("🔍 Cuplikan Dataset")
     st.dataframe(df.head())
@@ -43,8 +42,13 @@ if uploaded_file is not None:
         (df['Category'] == 'Technology') &
         (df['Sub-Category'] != 'Phones')
     ].copy()
+    df_filtered = df_filtered.dropna(axis=1, how='all')
+    df_filtered['Returns'] = df_filtered['Returns'].fillna(0)
+    df_filtered.columns = df_filtered.columns.str.strip()
 
-    st.write(f"Jumlah data setelah filter: **{len(df_filtered)}** dari total **{len(df)}**")
+    st.subheader("🔍 Cuplikan Dataset Setelah Disaring")
+    st.dataframe(df_filtered.head())
+    st.write(f"Jumlah data setelah disaring: **{len(df_filtered)}** dari total **{len(df)}**")
 
     if df_filtered.empty:
         st.error("❌ Setelah filtering, data kosong. Tidak dapat melanjutkan.")
