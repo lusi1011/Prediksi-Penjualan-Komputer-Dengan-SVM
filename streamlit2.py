@@ -37,20 +37,21 @@ if uploaded_file is not None:
     df.columns = df.columns.str.strip()
 
     st.subheader("🔍 Cuplikan Dataset")
-    st.dataframe(df.head())
+    
 
-    # --- Pra-pemrosesan Data ---
     df_filtered = df[
         (df['Category'] == 'Technology') &
         (df['Sub-Category'] != 'Phones')
     ].copy()
 
+    st.dataframe(df_filtered.head())
     st.write(f"Jumlah data setelah filter: **{len(df_filtered)}** dari total **{len(df)}**")
 
     if df_filtered.empty:
         st.error("❌ Setelah filtering, data kosong. Tidak dapat melanjutkan.")
         st.stop()
 
+    # --- Pra-pemrosesan Data ---
     # Agregasi data per produk
     product_stats = df_filtered.groupby('Product Name').agg(
         Total_Quantity=('Quantity', 'sum'),
