@@ -95,7 +95,7 @@ if uploaded_file is not None:
     # Atur Judul dan Colorbar
     ax.set_title("Correlation Matrix", pad=20, fontsize=12)
     colorbar = plt.colorbar(im, ax=ax, label='Koefisien Korelasi', shrink=0.5)
-    cbar.set_label('Koefisien Korelasi', fontsize=8)
+    colorbar.set_label('Koefisien Korelasi', fontsize=8)
 
     # Tampilkan Plot di Streamlit
     fig.tight_layout()
