@@ -75,7 +75,7 @@ if uploaded_file is not None:
     corr = product_stats[['Total_Quantity', 'Mean_Sales', 'Mean_Profit', 'Count_Orders']].corr()
 
     fig, ax = plt.subplots(figsize=(4,4))
-    im = ax.imshow(corr, cmap='coolwarm')  # Menggunakan colormap yang lebih menarik
+    im = ax.imshow(corr, cmap='coolwarm', fontsize=6)  # Menggunakan colormap yang lebih menarik
 
     # Tambahkan Label Kolom dan Baris
     ax.set_xticks(np.arange(len(corr.columns)))
@@ -90,11 +90,11 @@ if uploaded_file is not None:
         for j in range(len(corr.columns)):
             value = corr.iloc[i, j]
             text_color = "white" if abs(value) > 0.6 else "black"
-            ax.text(j, i, round(value, 2), ha='center', va='center', color=text_color, fontsize=4)
+            ax.text(j, i, round(value, 2), ha='center', va='center', color=text_color, fontsize=6)
 
     # Atur Judul dan Colorbar
     ax.set_title("Correlation Matrix", pad=20)
-    plt.colorbar(im, ax=ax, label='Koefisien Korelasi', shrink = 0.5)
+    plt.colorbar(im, ax=ax, label='Koefisien Korelasi', shrink=0.5)
 
     # Tampilkan Plot di Streamlit
     fig.tight_layout()
