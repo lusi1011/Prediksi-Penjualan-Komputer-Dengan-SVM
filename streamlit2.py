@@ -90,7 +90,7 @@ if uploaded_file is not None:
         for j in range(len(corr.columns)):
             value = corr.iloc[i, j]
             text_color = "white" if abs(value) > 0.6 else "black"
-            ax.text(j, i, round(value, 2), ha='center', va='center', color=text_color, fontsize=8)
+            ax.text(j, i, round(value, 2), ha='center', va='center', color=text_color, fontsize=4)
 
     # Atur Judul dan Colorbar
     ax.set_title("Correlation Matrix", pad=20)
