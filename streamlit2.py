@@ -75,7 +75,7 @@ if uploaded_file is not None:
     corr = product_stats[['Total_Quantity', 'Mean_Sales', 'Mean_Profit', 'Count_Orders']].corr()
 
     fig, ax = plt.subplots(figsize=(4,4))
-    im = ax.imshow(corr, cmap='coolwarm', fontsize=6)  # Menggunakan colormap yang lebih menarik
+    im = ax.imshow(corr, cmap='coolwarm')  # Menggunakan colormap yang lebih menarik
 
     # Tambahkan Label Kolom dan Baris
     ax.set_xticks(np.arange(len(corr.columns)))
@@ -84,7 +84,7 @@ if uploaded_file is not None:
     ax.set_yticklabels(corr.columns)
 
     # Rotasi Label X
-    plt.setp(ax.get_xticklabels(), rotation=45, ha="right", rotation_mode="anchor")
+    plt.setp(ax.get_xticklabels(), rotation=45, ha="right", rotation_mode="anchor", fontsize=8)
 
     for i in range(len(corr.columns)):
         for j in range(len(corr.columns)):
@@ -93,8 +93,9 @@ if uploaded_file is not None:
             ax.text(j, i, round(value, 2), ha='center', va='center', color=text_color, fontsize=6)
 
     # Atur Judul dan Colorbar
-    ax.set_title("Correlation Matrix", pad=20)
-    plt.colorbar(im, ax=ax, label='Koefisien Korelasi', shrink=0.5)
+    ax.set_title("Correlation Matrix", pad=20, fontsize=12)
+    colorbar = plt.colorbar(im, ax=ax, label='Koefisien Korelasi', shrink=0.5)
+    cbar.set_label('Koefisien Korelasi', fontsize=8)
 
     # Tampilkan Plot di Streamlit
     fig.tight_layout()
