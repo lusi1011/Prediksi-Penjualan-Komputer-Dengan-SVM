@@ -67,14 +67,14 @@ if uploaded_file is not None:
 
     # --- Random Sampling Kecil (10 sampel acak) ---
     st.subheader("🧩 Sampling Data Acak")
-    product_stats_sampled = product_stats.sample(frac=0.1, random_state=42)
+    product_stats_sampled = product_stats.sample(frac=1, random_state=42)
     st.write("📊 Menggunakan 10 data sampel acak untuk analisis:")
     st.dataframe(product_stats_sampled)
 
     # Matriks Korelasi
     corr = product_stats[['Total_Quantity', 'Mean_Sales', 'Mean_Profit', 'Count_Orders']].corr()
 
-    fig, ax = plt.subplots(figsize=(5,5))
+    fig, ax = plt.subplots(figsize=(4,4))
     im = ax.imshow(corr, cmap='coolwarm')  # Menggunakan colormap yang lebih menarik
 
     # Tambahkan Label Kolom dan Baris
@@ -94,7 +94,7 @@ if uploaded_file is not None:
 
     # Atur Judul dan Colorbar
     ax.set_title("Correlation Matrix", pad=20)
-    plt.colorbar(im, ax=ax, label='Koefisien Korelasi')
+    plt.colorbar(im, ax=ax, label='Koefisien Korelasi', shrink = 0.5)
 
     # Tampilkan Plot di Streamlit
     fig.tight_layout()
