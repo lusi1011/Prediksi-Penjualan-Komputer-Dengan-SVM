@@ -104,7 +104,7 @@ if uploaded_file is not None:
     plt.colorbar(im, ax=ax, label='Koefisien Korelasi')
 
     # Tampilkan Plot di Streamlit
-    fig.tight_layout()
+
     st.pyplot(fig)
 
     # Gunakan hasil sampling untuk tahap selanjutnya
