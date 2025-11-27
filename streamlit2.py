@@ -71,6 +71,42 @@ if uploaded_file is not None:
     st.write("📊 Menggunakan 10 data sampel acak untuk analisis:")
     st.dataframe(product_stats_sampled)
 
+    # Matriks Korelasi
+    corr = product_stats[['Total_Quantity', 'Mean_Sales', 'Mean_Profit', 'Count_Orders']].corr()
+
+    fig, ax = plt.subplots()
+    im = ax.imshow(corr, cmap='coolwarm')  # Menggunakan colormap yang lebih menarik
+
+    # Tambahkan Label Kolom dan Baris
+    ax.set_xticks(np.arange(len(corr.columns)))
+    ax.set_yticks(np.arange(len(corr.columns)))
+    ax.set_xticklabels(corr.columns)
+    ax.set_yticklabels(corr.columns)
+
+    # Rotasi Label X
+    plt.setp(ax.get_xticklabels(), rotation=45, ha="right", rotation_mode="anchor")
+
+    for i in range(len(corr.columns)):
+        for j in range(len(corr.columns)):
+            # Tentukan warna teks berdasarkan nilai korelasi
+            value = corr.iloc[i, j]
+            # Pilih warna terang (misalnya putih) untuk nilai gelap, dan sebaliknya
+            text_color = "white" if abs(value) > 0.6 else "black"
+        
+            ax.text(j, i, round(value, 2), 
+                    ha='center', 
+                    va='center', 
+                    color=text_color, 
+                    fontsize=10)
+
+    # Atur Judul dan Colorbar
+    ax.set_title("Correlation Matrix", pad=20)
+    plt.colorbar(im, ax=ax, label='Koefisien Korelasi')
+
+    # Tampilkan Plot di Streamlit
+    fig.tight_layout()
+    st.pyplot(fig)
+
     # Gunakan hasil sampling untuk tahap selanjutnya
     X_products = product_stats_sampled[['Product Name', 'Mean_Sales', 'Mean_Profit', 'Count_Orders']]
     y_products = product_stats_sampled['Total_Quantity']
@@ -152,7 +188,7 @@ if uploaded_file is not None:
                          .highlight_min(axis=0, subset=['MSE', 'MAPE'], color='lightpink')
     )
 
-    # --- Visualisasi ---
+    # --- Visualisasi --- 
     st.subheader("🎨 Visualisasi Hasil Prediksi")
 
     X_test_original = scaler_X.inverse_transform(X_test_scaled)
