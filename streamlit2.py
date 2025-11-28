@@ -75,7 +75,7 @@ if uploaded_file is not None:
 # Penentuan Sampel Data
 # -----------------------------
     st.subheader("Random Sampling Data")
-    product_stats_sampled = product_stats.sample(frac=0.1, random_state=42)
+    product_stats_sampled = product_stats.sample(frac=0.5, random_state=42)
     st.write("Contoh sampel untuk analisis:")
     st.dataframe(product_stats_sampled)
 
@@ -130,7 +130,7 @@ if uploaded_file is not None:
         rbf_param = grid_search_rbf.best_estimator_
 
         param_grid_poly = {
-            'C': [1, 10],
+            'C': [0.1, 1, 10],
             'gamma': [0.1, 1, 10],
             'coef0': [0, 1, 2],
             'degree': [2, 3]
@@ -140,7 +140,7 @@ if uploaded_file is not None:
         poly_param = grid_search_poly.best_estimator_
 
         param_grid_sigmoid = {
-            'C': [1, 10],
+            'C': [0.1, 1, 10],
             'gamma': [0.1, 1, 10],
             'coef0': [-2, -1, 0, 1, 2]
         }
