@@ -130,8 +130,8 @@ if uploaded_file is not None:
         rbf_param = grid_search_rbf.best_estimator_
 
         param_grid_poly = {
-            'C': [0.1, 1, 10],
-            'gamma': [1, 10],
+            'C': [1, 10],
+            'gamma': [0.1, 1, 10],
             'coef0': [0, 1, 2],
             'degree': [2, 3]
         }
@@ -140,8 +140,8 @@ if uploaded_file is not None:
         poly_param = grid_search_poly.best_estimator_
 
         param_grid_sigmoid = {
-            'C': [0.1, 1, 10],
-            'gamma': [1, 10],
+            'C': [1, 10],
+            'gamma': [0.1, 1, 10],
             'coef0': [-2, -1, 0, 1, 2]
         }
         grid_search_sigmoid = GridSearchCV(SVR(kernel='sigmoid'), param_grid_sigmoid, cv=3, scoring='r2', n_jobs=-1)
