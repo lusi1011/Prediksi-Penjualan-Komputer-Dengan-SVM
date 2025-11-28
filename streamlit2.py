@@ -181,6 +181,8 @@ if uploaded_file is not None:
                          .highlight_min(axis=0, subset=['MSE', 'MAPE'], color='lightgreen')
     )
 
+    st.write("Keterangan:")
+    st.write(f"Parameter Poly Tuned: {best_poly_params}")
     
     # --- Visualisasi --- 
     st.subheader("Visualisasi Hasil Kinerja dari Kernel SVM")
