@@ -41,6 +41,7 @@ if uploaded_file is not None:
 # -----------------------------
 # Pemrosesan Awal Data
 # -----------------------------
+    # Penyaringan dan Pembersihan Data
     df_filtered = df[
         (df['Category'] == 'Technology') &
         (df['Sub-Category'] != 'Phones')
@@ -57,7 +58,7 @@ if uploaded_file is not None:
         st.error("Data berubah menjadi kosong. Tidak mampu dilanjutkan.")
         st.stop()
 
-    # Integrasi data per produk
+    # Integrasi Data Setiap Komponen
     product_stats = df_filtered.groupby('Product Name').agg(
         Total_Quantity=('Quantity', 'sum'),
         Mean_Sales=('Sales', 'mean'),
@@ -67,40 +68,14 @@ if uploaded_file is not None:
 
     product_stats = product_stats.replace([np.inf, -np.inf], np.nan).dropna()
 
-    # --- Random Sampling Kecil (10 sampel) ---
+
+# -----------------------------
+# Penentuan Sampel Data
+# -----------------------------
     st.subheader("Random Sampling Data")
     product_stats_sampled = product_stats.sample(frac=1, random_state=42)
     st.write("Contoh sampel untuk analisis:")
     st.dataframe(product_stats_sampled)
-
-    # Matriks Korelasi
-    corr = product_stats[['Total_Quantity', 'Mean_Sales', 'Mean_Profit', 'Count_Orders']].corr()
-
-    fig, ax = plt.subplots(figsize=(4,4))
-    im = ax.imshow(corr, cmap='coolwarm')  # Menggunakan colormap yang lebih menarik
-
-    # Tambahkan Label Kolom dan Baris
-    ax.set_xticks(np.arange(len(corr.columns)))
-    ax.set_yticks(np.arange(len(corr.columns)))
-    ax.set_xticklabels(corr.columns)
-    ax.set_yticklabels(corr.columns)
-
-    # Rotasi Label X
-    plt.setp(ax.get_xticklabels(), rotation=45, ha="right", rotation_mode="anchor", fontsize=8)
-
-    for i in range(len(corr.columns)):
-        for j in range(len(corr.columns)):
-            value = corr.iloc[i, j]
-            text_color = "white" if abs(value) > 0.6 else "black"
-            ax.text(j, i, round(value, 2), ha='center', va='center', color=text_color, fontsize=6)
-
-    # Atur Judul dan Colorbar
-    ax.set_title("Matriks Korelasi", pad=20, fontsize=12)
-    colorbar = plt.colorbar(im, ax=ax, label='Koefisien Korelasi', shrink=0.5)
-    colorbar.set_label('Koefisien Korelasi', fontsize=8)
-
-    # Tampilkan Plot di Streamlit
-    st.pyplot(fig)
 
     # Gunakan hasil sampling untuk tahap selanjutnya
     X_products = product_stats_sampled[['Product Name', 'Mean_Sales', 'Mean_Profit', 'Count_Orders']]
@@ -189,6 +164,35 @@ if uploaded_file is not None:
     st.write(f"**Parameter Sigmoid Tuned:** {sigmoid_param}")
     
     # --- Visualisasi --- 
+    # Matriks Korelasi
+    corr = product_stats[['Total_Quantity', 'Mean_Sales', 'Mean_Profit', 'Count_Orders']].corr()
+
+    fig, ax = plt.subplots(figsize=(4,4))
+    im = ax.imshow(corr, cmap='coolwarm')  # Menggunakan colormap yang lebih menarik
+
+    # Tambahkan Label Kolom dan Baris
+    ax.set_xticks(np.arange(len(corr.columns)))
+    ax.set_yticks(np.arange(len(corr.columns)))
+    ax.set_xticklabels(corr.columns)
+    ax.set_yticklabels(corr.columns)
+
+    # Rotasi Label X
+    plt.setp(ax.get_xticklabels(), rotation=45, ha="right", rotation_mode="anchor", fontsize=8)
+
+    for i in range(len(corr.columns)):
+        for j in range(len(corr.columns)):
+            value = corr.iloc[i, j]
+            text_color = "white" if abs(value) > 0.6 else "black"
+            ax.text(j, i, round(value, 2), ha='center', va='center', color=text_color, fontsize=6)
+
+    # Atur Judul dan Colorbar
+    ax.set_title("Matriks Korelasi", pad=20, fontsize=12)
+    colorbar = plt.colorbar(im, ax=ax, label='Koefisien Korelasi', shrink=0.5)
+    colorbar.set_label('Koefisien Korelasi', fontsize=8)
+
+    # Tampilkan Plot di Streamlit
+    st.pyplot(fig)
+
     st.subheader("Visualisasi Hasil Kinerja dari Kernel SVM")
 
     X_test_original = scaler_X.inverse_transform(X_test_scaled)
