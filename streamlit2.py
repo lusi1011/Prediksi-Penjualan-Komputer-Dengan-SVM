@@ -220,6 +220,4 @@ if uploaded_file is not None:
     plt.tight_layout()
     st.pyplot(fig)
 
-    st.success("Model Regresi SVM berhasil dijalankan dan divisualisasikan.")
-else:
-    st.info("Unggah file dalam format CSV sebagai bahan analisis.")
+    st.success("Model Regresi SVM berhasil diproses dan divisualisasikan.")
