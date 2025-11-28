@@ -182,7 +182,7 @@ if uploaded_file is not None:
     )
 
     st.write("Keterangan:")
-    st.write(f"Parameter Poly Tuned: {best_poly_params}")
+    st.write(f"Parameter Poly Tuned: {best_poly_svr}")
     
     # --- Visualisasi --- 
     st.subheader("Visualisasi Hasil Kinerja dari Kernel SVM")
