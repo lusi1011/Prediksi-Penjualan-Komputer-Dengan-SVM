@@ -35,7 +35,7 @@ uploaded_file = "SuperStore_Sales_Dataset.csv"
 if uploaded_file is not None:
     df = pd.read_csv(uploaded_file)
 
-    st.subheader("Cuplikan Dataset")
+    st.subheader("Kutipan Dataset Penjualan Komponen Komputer")
     st.dataframe(df.head())
 
     df_filtered = df[
@@ -46,16 +46,16 @@ if uploaded_file is not None:
     df_filtered['Returns'] = df_filtered['Returns'].fillna(0)
     df_filtered.columns = df_filtered.columns.str.strip()
 
-    st.subheader("Cuplikan Dataset Setelah Disaring")
+    st.subheader("Kutipan Dataset Setelah Disaring")
     st.dataframe(df_filtered.head())
     st.write(f"Jumlah data setelah disaring: **{len(df_filtered)}** dari total **{len(df)}**")
 
     if df_filtered.empty:
-        st.error("Setelah filtering, data berubah menjadi kosong. Tidak dapat melanjutkan.")
+        st.error("Data berubah menjadi kosong. Tidak mampu dilanjutkan.")
         st.stop()
 
     # --- Pra-pemrosesan Data ---
-    # Agregasi data per produk
+    # Integrasi data per produk
     product_stats = df_filtered.groupby('Product Name').agg(
         Total_Quantity=('Quantity', 'sum'),
         Mean_Sales=('Sales', 'mean'),
@@ -65,7 +65,7 @@ if uploaded_file is not None:
 
     product_stats = product_stats.replace([np.inf, -np.inf], np.nan).dropna()
 
-    # --- Random Sampling Kecil (10 sampel acak) ---
+    # --- Random Sampling Kecil (10 sampel) ---
     st.subheader("Random Sampling Data")
     product_stats_sampled = product_stats.sample(frac=1, random_state=42)
     st.write("Contoh sampel untuk analisis:")
@@ -98,7 +98,6 @@ if uploaded_file is not None:
     colorbar.set_label('Koefisien Korelasi', fontsize=8)
 
     # Tampilkan Plot di Streamlit
-    fig.tight_layout()
     st.pyplot(fig)
 
     # Gunakan hasil sampling untuk tahap selanjutnya
@@ -182,6 +181,7 @@ if uploaded_file is not None:
                          .highlight_min(axis=0, subset=['MSE', 'MAPE'], color='lightgreen')
     )
 
+    
     # --- Visualisasi --- 
     st.subheader("Visualisasi Hasil Kinerja dari Kernel SVM")
 
