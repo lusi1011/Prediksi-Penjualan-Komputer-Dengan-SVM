@@ -25,7 +25,7 @@ def mean_absolute_percentage_error(y_true, y_pred):
 # Konfigurasi Halaman
 # -----------------------------
 st.set_page_config(page_title="Prediksi SVR SuperStore", layout="wide")
-st.title("📊 Analisis Prediksi Penjualan Produk (SVR)")
+st.title("Analisis Prediksi Penjualan Produk (SVR)")
 
 # -----------------------------
 # Upload File
@@ -35,7 +35,7 @@ uploaded_file = "SuperStore_Sales_Dataset.csv"
 if uploaded_file is not None:
     df = pd.read_csv(uploaded_file)
 
-    st.subheader("🔍 Cuplikan Dataset")
+    st.subheader("Cuplikan Dataset")
     st.dataframe(df.head())
 
     df_filtered = df[
@@ -46,12 +46,12 @@ if uploaded_file is not None:
     df_filtered['Returns'] = df_filtered['Returns'].fillna(0)
     df_filtered.columns = df_filtered.columns.str.strip()
 
-    st.subheader("🔍 Cuplikan Dataset Setelah Disaring")
+    st.subheader("Cuplikan Dataset Setelah Disaring")
     st.dataframe(df_filtered.head())
     st.write(f"Jumlah data setelah disaring: **{len(df_filtered)}** dari total **{len(df)}**")
 
     if df_filtered.empty:
-        st.error("❌ Setelah filtering, data kosong. Tidak dapat melanjutkan.")
+        st.error("Setelah filtering, data berubah menjadi kosong. Tidak dapat melanjutkan.")
         st.stop()
 
     # --- Pra-pemrosesan Data ---
@@ -66,9 +66,9 @@ if uploaded_file is not None:
     product_stats = product_stats.replace([np.inf, -np.inf], np.nan).dropna()
 
     # --- Random Sampling Kecil (10 sampel acak) ---
-    st.subheader("🧩 Sampling Data Acak")
+    st.subheader("Random Sampling Data")
     product_stats_sampled = product_stats.sample(frac=1, random_state=42)
-    st.write("📊 Menggunakan 10 data sampel acak untuk analisis:")
+    st.write("Contoh sampel untuk analisis:")
     st.dataframe(product_stats_sampled)
 
     # Matriks Korelasi
@@ -93,7 +93,7 @@ if uploaded_file is not None:
             ax.text(j, i, round(value, 2), ha='center', va='center', color=text_color, fontsize=6)
 
     # Atur Judul dan Colorbar
-    ax.set_title("Correlation Matrix", pad=20, fontsize=12)
+    ax.set_title("Matriks Korelasi", pad=20, fontsize=12)
     colorbar = plt.colorbar(im, ax=ax, label='Koefisien Korelasi', shrink=0.5)
     colorbar.set_label('Koefisien Korelasi', fontsize=8)
 
@@ -128,10 +128,10 @@ if uploaded_file is not None:
     selected_feature_names = [feature_cols[i] for i in selected_indices]
     selected_feature_name_for_plot = selected_feature_names[0]
 
-    st.success("✅ Data berhasil diproses dan siap untuk pelatihan model.")
+    st.success("Data berhasil diproses dan siap untuk pelatihan model.")
 
     # --- Hyperparameter Tuning ---
-    with st.spinner("🔄 Melatih model SVR..."):
+    with st.spinner("Sedang melatih model SVR..."):
         param_grid_rbf = {'C': [0.1, 1, 10], 'gamma': [0.1, 1, 'scale']}
         grid_search_rbf = GridSearchCV(SVR(kernel='rbf'), param_grid_rbf, cv=3, scoring='r2', n_jobs=-1)
         grid_search_rbf.fit(X_train_selected_all, y_train_scaled)
@@ -176,14 +176,14 @@ if uploaded_file is not None:
         results.append({'Model': name, 'R2': r2, 'MSE': mse, 'MAPE': mape})
 
     results_df = pd.DataFrame(results).sort_values(by='R2', ascending=False)
-    st.subheader("📈 Hasil Evaluasi Model")
+    st.subheader("Hasil Kinerja dari Kernel SVM")
     st.dataframe(
         results_df.style.highlight_max(axis=0, subset=['R2'], color='lightgreen')
-                         .highlight_min(axis=0, subset=['MSE', 'MAPE'], color='lightpink')
+                         .highlight_min(axis=0, subset=['MSE', 'MAPE'], color='lightgreen')
     )
 
     # --- Visualisasi --- 
-    st.subheader("🎨 Visualisasi Hasil Prediksi")
+    st.subheader("Visualisasi Hasil Kinerja dari Kernel SVM")
 
     X_test_original = scaler_X.inverse_transform(X_test_scaled)
     X_test_selected_original_plot = X_test_original[:, selected_indices[0]]
@@ -207,8 +207,8 @@ if uploaded_file is not None:
         y_smooth_pred_scaled = model.predict(x_smooth_scaled_reshaped)
         y_smooth_pred_orig = scaler_y.inverse_transform(y_smooth_pred_scaled.reshape(-1, 1)).flatten()
 
-        ax.scatter(X_test_selected_original_plot, y_test, color='gray', label='Aktual', alpha=0.6)
-        ax.plot(x_smooth_orig, y_smooth_pred_orig, color='blue', linewidth=2, label=f'Prediksi {name}')
+        ax.scatter(X_test_selected_original_plot, y_test, color='red', label='Aktual', alpha=0.6)
+        ax.plot(x_smooth_orig, y_smooth_pred_orig, color='black', linewidth=2, label=f'Prediksi {name}')
 
         ax.set_title(name)
         ax.legend()
@@ -220,6 +220,6 @@ if uploaded_file is not None:
     plt.tight_layout()
     st.pyplot(fig)
 
-    st.success("✅ Semua proses selesai! Model SVR berhasil dijalankan dan divisualisasikan.")
+    st.success("Model Regresi SVM berhasil dijalankan dan divisualisasikan.")
 else:
-    st.info("👆 Unggah file CSV untuk memulai analisis.")
+    st.info("Unggah file dalam format CSV sebagai bahan analisis.")
