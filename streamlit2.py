@@ -46,6 +46,8 @@ if uploaded_file is not None:
         (df['Category'] == 'Technology') &
         (df['Sub-Category'] != 'Phones')
     ].copy()
+
+    # (Bersihkan nilai-nilai yang tidak terisi)
     df_filtered = df_filtered.dropna(axis=1, how='all')
     df_filtered['Returns'] = df_filtered['Returns'].fillna(0)
     df_filtered.columns = df_filtered.columns.str.strip()
@@ -77,26 +79,34 @@ if uploaded_file is not None:
     st.write("Contoh sampel untuk analisis:")
     st.dataframe(product_stats_sampled)
 
-    # Gunakan hasil sampling untuk tahap selanjutnya
     X_products = product_stats_sampled[['Product Name', 'Mean_Sales', 'Mean_Profit', 'Count_Orders']]
     y_products = product_stats_sampled['Total_Quantity']
     feature_cols = ['Mean_Sales', 'Mean_Profit', 'Count_Orders']
 
-    # Split data
+
+# -----------------------------
+# Pemisahan Data
+# -----------------------------
     X_train_full, X_test_full, y_train, y_test = train_test_split(
         X_products, y_products, test_size=0.2, random_state=42
     )
     X_test = X_test_full[feature_cols]
     X_train = X_train_full[feature_cols]
 
-    # Scaling
+
+# -----------------------------
+# Standarisasi Data
+# -----------------------------
     scaler_X = StandardScaler()
     X_train_scaled = scaler_X.fit_transform(X_train)
     X_test_scaled = scaler_X.transform(X_test)
     scaler_y = StandardScaler()
     y_train_scaled = scaler_y.fit_transform(y_train.values.reshape(-1, 1)).flatten()
 
-    # Feature Selection
+
+# -----------------------------
+# Penentuan Fitur Paling Efektif
+# -----------------------------
     selector = SelectKBest(score_func=f_regression, k=1)
     X_train_selected_all = selector.fit_transform(X_train_scaled, y_train_scaled)
     X_test_selected_all = selector.transform(X_test_scaled)
@@ -106,9 +116,15 @@ if uploaded_file is not None:
 
     st.success("Data berhasil diproses dan siap untuk pelatihan model.")
 
-    # --- Hyperparameter Tuning ---
+
+# -----------------------------
+# Implementasi Parameter Kernel SVM Dengan Uji Paling Efektif
+# -----------------------------
     with st.spinner("Sedang melatih model SVR..."):
-        param_grid_rbf = {'C': [0.1, 1, 10], 'gamma': [0.1, 1, 'scale']}
+        param_grid_rbf = {
+            'C': [0.1, 1, 10],
+            'gamma': [0.1, 1, 'scale']
+        }
         grid_search_rbf = GridSearchCV(SVR(kernel='rbf'), param_grid_rbf, cv=3, scoring='r2', n_jobs=-1)
         grid_search_rbf.fit(X_train_selected_all, y_train_scaled)
         rbf_param = grid_search_rbf.best_estimator_
@@ -141,29 +157,9 @@ if uploaded_file is not None:
         'Sigmoid Tuned': sigmoid_param
     }
 
-    # --- Evaluasi Model ---
-    results = []
-    for name, model in model_dict.items():
-        y_pred_scaled = model.predict(X_test_selected_all)
-        y_pred = scaler_y.inverse_transform(y_pred_scaled.reshape(-1, 1)).flatten()
-        mse = mean_squared_error(y_test, y_pred)
-        r2 = r2_score(y_test, y_pred)
-        mape = mean_absolute_percentage_error(y_test, y_pred)
-        results.append({'Model': name, 'R2': r2, 'MSE': mse, 'MAPE': mape})
-
-    results_df = pd.DataFrame(results).sort_values(by='R2', ascending=False)
-    st.subheader("Hasil Kinerja dari Kernel SVM")
-    st.dataframe(
-        results_df.style.highlight_max(axis=0, subset=['R2'], color='lightgreen')
-                         .highlight_min(axis=0, subset=['MSE', 'MAPE'], color='lightgreen')
-    )
-
-    st.write("**Keterangan Bagi Kernel Nonlinear:**")
-    st.write(f"**Parameter Poly Tuned:** {poly_param}")
-    st.write(f"**Parameter RBF Tuned:** {rbf_param}")
-    st.write(f"**Parameter Sigmoid Tuned:** {sigmoid_param}")
-    
-    # --- Visualisasi --- 
+# -----------------------------
+# Visualisasi Model
+# -----------------------------    
     # Matriks Korelasi
     corr = product_stats[['Total_Quantity', 'Mean_Sales', 'Mean_Profit', 'Count_Orders']].corr()
 
@@ -185,14 +181,36 @@ if uploaded_file is not None:
             text_color = "white" if abs(value) > 0.6 else "black"
             ax.text(j, i, round(value, 2), ha='center', va='center', color=text_color, fontsize=6)
 
-    # Atur Judul dan Colorbar
+    # Judul dan Colorbar, serta Tampilan Plot Matriks
     ax.set_title("Matriks Korelasi", pad=20, fontsize=12)
     colorbar = plt.colorbar(im, ax=ax, label='Koefisien Korelasi', shrink=0.5)
     colorbar.set_label('Koefisien Korelasi', fontsize=8)
 
-    # Tampilkan Plot di Streamlit
     st.pyplot(fig)
 
+    # Hasil Kinerja dari Kernel SVM
+    results = []
+    for name, model in model_dict.items():
+        y_pred_scaled = model.predict(X_test_selected_all)
+        y_pred = scaler_y.inverse_transform(y_pred_scaled.reshape(-1, 1)).flatten()
+        mse = mean_squared_error(y_test, y_pred)
+        r2 = r2_score(y_test, y_pred)
+        mape = mean_absolute_percentage_error(y_test, y_pred)
+        results.append({'Model': name, 'R2': r2, 'MSE': mse, 'MAPE': mape})
+
+    results_df = pd.DataFrame(results).sort_values(by='R2', ascending=False)
+    st.subheader("Hasil Kinerja dari Kernel SVM")
+    st.dataframe(
+        results_df.style.highlight_max(axis=0, subset=['R2'], color='lightgreen')
+                         .highlight_min(axis=0, subset=['MSE', 'MAPE'], color='lightgreen')
+    )
+
+    st.write("**Keterangan Bagi Kernel Nonlinear:**")
+    st.write(f"**Parameter Poly Tuned:** {poly_param}")
+    st.write(f"**Parameter RBF Tuned:** {rbf_param}")
+    st.write(f"**Parameter Sigmoid Tuned:** {sigmoid_param}")
+
+    # Visualisasi Hasil Kinerja dari Kernel SVM
     st.subheader("Visualisasi Hasil Kinerja dari Kernel SVM")
 
     X_test_original = scaler_X.inverse_transform(X_test_scaled)
