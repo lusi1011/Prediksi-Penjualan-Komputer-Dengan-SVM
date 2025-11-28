@@ -1,7 +1,7 @@
 # -*- coding: utf-8 -*-
 """streamlit
 
-Prediksi Penjualan Produk SuperStore dengan SVR (Streamlit Cloud Friendly)
+Prediksi Penjualan Produk SuperStore dengan SVM (Streamlit Cloud Friendly)
 """
 
 import streamlit as st
@@ -24,8 +24,8 @@ def mean_absolute_percentage_error(y_true, y_pred):
 # -----------------------------
 # Konfigurasi Halaman
 # -----------------------------
-st.set_page_config(page_title="Prediksi SVR SuperStore", layout="wide")
-st.title("Analisis Prediksi Penjualan Produk (SVR)")
+st.set_page_config(page_title="Prediksi SuperStore Melalui SVM", layout="wide")
+st.title("Analisis Prediksi Penjualan Produk (SVM)")
 
 # -----------------------------
 # Pengumpulan Data
