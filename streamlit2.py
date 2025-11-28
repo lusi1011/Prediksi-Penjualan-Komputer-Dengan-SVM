@@ -28,7 +28,7 @@ st.set_page_config(page_title="Prediksi SVR SuperStore", layout="wide")
 st.title("Analisis Prediksi Penjualan Produk (SVR)")
 
 # -----------------------------
-# Upload File
+# Pengumpulan Data
 # -----------------------------
 uploaded_file = "SuperStore_Sales_Dataset.csv"
 
@@ -38,6 +38,9 @@ if uploaded_file is not None:
     st.subheader("Kutipan Dataset Penjualan Komponen Komputer")
     st.dataframe(df.head())
 
+# -----------------------------
+# Pemrosesan Awal Data
+# -----------------------------
     df_filtered = df[
         (df['Category'] == 'Technology') &
         (df['Sub-Category'] != 'Phones')
@@ -54,7 +57,6 @@ if uploaded_file is not None:
         st.error("Data berubah menjadi kosong. Tidak mampu dilanjutkan.")
         st.stop()
 
-    # --- Pra-pemrosesan Data ---
     # Integrasi data per produk
     product_stats = df_filtered.groupby('Product Name').agg(
         Total_Quantity=('Quantity', 'sum'),
