@@ -75,7 +75,7 @@ if uploaded_file is not None:
 # Penentuan Sampel Data
 # -----------------------------
     st.subheader("Random Sampling Data")
-    product_stats_sampled = product_stats.sample(frac=0.5, random_state=42)
+    product_stats_sampled = product_stats.sample(frac=1, random_state=42)
     st.write("Contoh sampel untuk analisis:")
     st.dataframe(product_stats_sampled)
 
