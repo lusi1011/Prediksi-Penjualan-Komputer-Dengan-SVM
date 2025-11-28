@@ -181,10 +181,10 @@ if uploaded_file is not None:
                          .highlight_min(axis=0, subset=['MSE', 'MAPE'], color='lightgreen')
     )
 
-    st.write("Keterangan Bagi Kernel Nonlinear:")
-    st.write(f"Parameter Poly Tuned: {poly_param}")
-    st.write(f"Parameter RBF Tuned: {rbf_param}")
-    st.write(f"Parameter Sigmoid Tuned: {sigmoid_param}")
+    st.write("**Keterangan Bagi Kernel Nonlinear:**")
+    st.write(f"**Parameter Poly Tuned:** {poly_param}")
+    st.write(f"**Parameter RBF Tuned:** {rbf_param}")
+    st.write(f"**Parameter Sigmoid Tuned:** {sigmoid_param}")
     
     # --- Visualisasi --- 
     st.subheader("Visualisasi Hasil Kinerja dari Kernel SVM")
