@@ -123,7 +123,7 @@ if uploaded_file is not None:
     with st.spinner("Sedang melatih model SVR..."):
         param_grid_rbf = {
             'C': [0.1, 1, 10],
-            'gamma': [0.1, 1, 'scale']
+            'gamma': [0.1, 1]
         }
         grid_search_rbf = GridSearchCV(SVR(kernel='rbf'), param_grid_rbf, cv=3, scoring='r2', n_jobs=-1)
         grid_search_rbf.fit(X_train_selected_all, y_train_scaled)
@@ -131,7 +131,7 @@ if uploaded_file is not None:
 
         param_grid_poly = {
             'C': [0.1, 1, 10],
-            'gamma': [0.1, 1, 'scale'],
+            'gamma': [1, 10],
             'coef0': [0, 1, 2],
             'degree': [2, 3]
         }
@@ -141,7 +141,7 @@ if uploaded_file is not None:
 
         param_grid_sigmoid = {
             'C': [0.1, 1, 10],
-            'gamma': [0.1, 1, 'scale'],
+            'gamma': [1, 10],
             'coef0': [-2, -1, 0, 1, 2]
         }
         grid_search_sigmoid = GridSearchCV(SVR(kernel='sigmoid'), param_grid_sigmoid, cv=3, scoring='r2', n_jobs=-1)
