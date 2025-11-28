@@ -134,7 +134,7 @@ if uploaded_file is not None:
         param_grid_rbf = {'C': [0.1, 1, 10], 'gamma': [0.1, 1, 'scale']}
         grid_search_rbf = GridSearchCV(SVR(kernel='rbf'), param_grid_rbf, cv=3, scoring='r2', n_jobs=-1)
         grid_search_rbf.fit(X_train_selected_all, y_train_scaled)
-        best_rbf_svr = grid_search_rbf.best_estimator_
+        rbf_param = grid_search_rbf.best_estimator_
 
         param_grid_poly = {
             'C': [0.1, 1, 10],
@@ -144,7 +144,7 @@ if uploaded_file is not None:
         }
         grid_search_poly = GridSearchCV(SVR(kernel='poly'), param_grid_poly, cv=3, scoring='r2', n_jobs=-1)
         grid_search_poly.fit(X_train_selected_all, y_train_scaled)
-        best_poly_svr = grid_search_poly.best_estimator_
+        poly_param = grid_search_poly.best_estimator_
 
         param_grid_sigmoid = {
             'C': [0.1, 1, 10],
@@ -153,15 +153,15 @@ if uploaded_file is not None:
         }
         grid_search_sigmoid = GridSearchCV(SVR(kernel='sigmoid'), param_grid_sigmoid, cv=3, scoring='r2', n_jobs=-1)
         grid_search_sigmoid.fit(X_train_selected_all, y_train_scaled)
-        best_sigmoid_svr = grid_search_sigmoid.best_estimator_
+        sigmoid_param = grid_search_sigmoid.best_estimator_
 
-        model_linear = SVR(kernel='linear', C=10, gamma='scale').fit(X_train_selected_all, y_train_scaled)
+        linear_param = SVR(kernel='linear', C=10, gamma='scale').fit(X_train_selected_all, y_train_scaled)
 
     model_dict = {
-        'Linear': model_linear,
-        'Poly Tuned': best_poly_svr,
-        'RBF Tuned': best_rbf_svr,
-        'Sigmoid Tuned': best_sigmoid_svr
+        'Linear': linear_param,
+        'Poly Tuned': poly_param,
+        'RBF Tuned': rbf_param,
+        'Sigmoid Tuned': sigmoid_param
     }
 
     # --- Evaluasi Model ---
@@ -181,8 +181,10 @@ if uploaded_file is not None:
                          .highlight_min(axis=0, subset=['MSE', 'MAPE'], color='lightgreen')
     )
 
-    st.write("Keterangan:")
-    st.write(f"Parameter Poly Tuned: {best_poly_svr}")
+    st.write("Keterangan Bagi Kernel Nonlinear:")
+    st.write(f"Parameter Poly Tuned: {poly_param}")
+    st.write(f"Parameter RBF Tuned: {rbf_param}")
+    st.write(f"Parameter Sigmoid Tuned: {sigmoid_param}")
     
     # --- Visualisasi --- 
     st.subheader("Visualisasi Hasil Kinerja dari Kernel SVM")
