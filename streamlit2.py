@@ -215,8 +215,7 @@ if uploaded_file is not None:
     st.write(f"**Parameter Sigmoid Tuned:** {sigmoid_param}")
 
     # Analisis TOP 10 Barang Terlaris
-
-    # Ambil Nama Produk dan Gabungkan dengan Prediksi
+    # Ambil Nama Produk dan Integrasikan dengan Prediksi
     best_sellers_df = X_test_full['Product Name'].reset_index(drop=True).to_frame()
     best_sellers_df['Actual_Quantity'] = y_test.values
     best_sellers_df['Predicted_Linear'] = predictions_df['Predicted_Linear'].values
@@ -224,13 +223,11 @@ if uploaded_file is not None:
     best_sellers_df['Predicted_RBF_Tuned'] = predictions_df['Predicted_RBF_Tuned'].values
     best_sellers_df['Predicted_Sigmoid_Tuned'] = predictions_df['Predicted_Sigmoid_Tuned'].values
 
-    # Tambahkan kolom Pembulatan Ke Bawah (Floor)
     best_sellers_df['Floor_Linear'] = np.floor(best_sellers_df['Predicted_Linear'])
     best_sellers_df['Floor_Poly'] = np.floor(best_sellers_df['Predicted_Poly_Tuned'])
     best_sellers_df['Floor_RBF'] = np.floor(best_sellers_df['Predicted_RBF_Tuned'])
     best_sellers_df['Floor_Sigmoid'] = np.floor(best_sellers_df['Predicted_Sigmoid_Tuned'])
 
-    # --- 2. Tampilan Streamlit ---
     st.markdown("---")
     st.title("🏆 Analisis TOP 10 Barang Terlaris")
     st.markdown("Tampilan **10 Produk terlaris** berdasarkan prediksi Quantity melalui kernel regresi SVM.")
@@ -240,11 +237,9 @@ if uploaded_file is not None:
 
     def show_top_n(df, pred_col, floor_col, kernel_name):
         top_n_df = df.sort_values(by=pred_col, ascending=False).head(TOP_N)
-    
         display_df = top_n_df[['Product Name', 'Actual_Quantity', pred_col, floor_col]].copy()
         display_df.columns = ['Nama Produk', 'Aktual', 'Prediksi', 'Bulat Bawah']
         st.subheader(f"SVR {kernel_name} Kernel (Top {TOP_N})")
-    
         st.dataframe(
             display_df,
             use_container_width=True,
@@ -255,8 +250,6 @@ if uploaded_file is not None:
                 "Bulat Bawah": st.column_config.NumberColumn(format="%d"),  
             }
         )
-
-    # Pembuatan Masing-Masing Tab Sesuai Dengan Kernel Tertentu
 
     with tab1:
         show_top_n(best_sellers_df, 'Predicted_Linear', 'Floor_Linear', 'Linear')
