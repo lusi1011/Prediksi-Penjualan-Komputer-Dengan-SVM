@@ -152,9 +152,9 @@ if uploaded_file is not None:
 
     model_dict = {
         'Linear': linear_param,
-        'Poly Tuned': poly_param,
-        'RBF Tuned': rbf_param,
-        'Sigmoid Tuned': sigmoid_param
+        'Poly_Tuned': poly_param,
+        'RBF_Tuned': rbf_param,
+        'Sigmoid_Tuned': sigmoid_param
     }
 
 # -----------------------------
@@ -217,10 +217,10 @@ if uploaded_file is not None:
     # Ambil Nama Produk dan Gabungkan dengan Prediksi
     best_sellers_df = X_test_full['Product Name'].reset_index(drop=True).to_frame()
     best_sellers_df['Actual_Quantity'] = y_test.values
-    best_sellers_df['Predicted_Linear'] = predictions_df['Predicted_linear'].values
-    best_sellers_df['Predicted_Poly_Tuned'] = predictions_df['Predicted_poly_tuned'].values
-    best_sellers_df['Predicted_RBF_Tuned'] = predictions_df['Predicted_rbf_tuned'].values
-    best_sellers_df['Predicted_Sigmoid_Tuned'] = predictions_df['Predicted_sigmoid_tuned'].values
+    best_sellers_df['Predicted_Linear'] = predictions_df['Predicted_Linear'].values
+    best_sellers_df['Predicted_Poly_Tuned'] = predictions_df['Predicted_Poly_Tuned'].values
+    best_sellers_df['Predicted_RBF_Tuned'] = predictions_df['Predicted_RBF_Tuned'].values
+    best_sellers_df['Predicted_Sigmoid_Tuned'] = predictions_df['Predicted_Sigmoid_Tuned'].values
 
     # Tambahkan kolom Pembulatan Ke Bawah (Floor)
     best_sellers_df['Floor_Linear'] = np.floor(best_sellers_df['Predicted_Linear'])
