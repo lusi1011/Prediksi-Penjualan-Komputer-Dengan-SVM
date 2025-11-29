@@ -120,7 +120,7 @@ if uploaded_file is not None:
 # -----------------------------
 # Implementasi Parameter Kernel SVM Dengan Uji Paling Efektif
 # -----------------------------
-    with st.spinner("Sedang melatih model SVR..."):
+    with st.spinner("Sedang melatih model regresi SVM..."):
         param_grid_rbf = {
             'C': [0.1, 1, 10],
             'gamma': [0.1, 1]
