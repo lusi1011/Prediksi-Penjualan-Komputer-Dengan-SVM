@@ -182,6 +182,7 @@ if uploaded_file is not None:
             ax.text(j, i, round(value, 2), ha='center', va='center', color=text_color, fontsize=6)
 
     # Judul dan Colorbar, serta Tampilan Plot Matriks
+    st.markdown("---")
     ax.set_title("Matriks Korelasi", pad=20, fontsize=12)
     colorbar = plt.colorbar(im, ax=ax, label='Koefisien Korelasi', shrink=0.5)
     colorbar.set_label('Koefisien Korelasi', fontsize=8)
@@ -201,6 +202,7 @@ if uploaded_file is not None:
         results.append({'Model': name, 'R2': r2, 'MSE': mse, 'MAPE': mape})
 
     results_df = pd.DataFrame(results).sort_values(by='R2', ascending=False)
+    st.markdown("---")
     st.subheader("Hasil Kinerja dari Kernel SVM")
     st.dataframe(
         results_df.style.highlight_max(axis=0, subset=['R2'], color='lightgreen')
@@ -212,7 +214,7 @@ if uploaded_file is not None:
     st.write(f"**Parameter RBF Tuned:** {rbf_param}")
     st.write(f"**Parameter Sigmoid Tuned:** {sigmoid_param}")
 
-    # --- Analisis TOP 10 Barang Terlaris ---
+    # Analisis TOP 10 Barang Terlaris
 
     # Ambil Nama Produk dan Gabungkan dengan Prediksi
     best_sellers_df = X_test_full['Product Name'].reset_index(drop=True).to_frame()
@@ -231,56 +233,42 @@ if uploaded_file is not None:
     # --- 2. Tampilan Streamlit ---
     st.markdown("---")
     st.title("🏆 Analisis TOP 10 Barang Terlaris")
-    st.markdown("Menampilkan **10 Produk teratas** berdasarkan prediksi Quantity untuk setiap Kernel SVR.")
+    st.markdown("Tampilan **10 Produk terlaris** berdasarkan prediksi Quantity melalui kernel regresi SVM.")
 
-    # Membuat Tabs agar tampilan lebih rapi dan user bisa klik pindah-pindah kernel
     tab1, tab2, tab3, tab4 = st.tabs(["Linear", "Poly Tuned", "RBF Tuned", "Sigmoid Tuned"])
-
     TOP_N = 10
 
-    # Helper function untuk menampilkan dataframe dengan format yang bagus
     def show_top_n(df, pred_col, floor_col, kernel_name):
-        # Sort data
         top_n_df = df.sort_values(by=pred_col, ascending=False).head(TOP_N)
     
-        # Select columns
         display_df = top_n_df[['Product Name', 'Actual_Quantity', pred_col, floor_col]].copy()
-    
-        # Rename columns untuk tampilan
-        display_df.columns = ['Nama Produk', 'Actual', 'Prediksi', 'Bulat Bawah']
-    
-        # Tampilkan Header
+        display_df.columns = ['Nama Produk', 'Aktual', 'Prediksi', 'Bulat Bawah']
         st.subheader(f"SVR {kernel_name} Kernel (Top {TOP_N})")
     
-        # Tampilkan Dataframe dengan formatting angka
         st.dataframe(
             display_df,
             use_container_width=True,
             hide_index=True,
             column_config={
-                "Actual": st.column_config.NumberColumn(format="%d"),       # Bulat
-                "Prediksi": st.column_config.NumberColumn(format="%.2f"),   # 2 desimal
-                "Bulat Bawah": st.column_config.NumberColumn(format="%d"),  # Bulat
+                "Actual": st.column_config.NumberColumn(format="%d"),       
+                "Prediksi": st.column_config.NumberColumn(format="%.2f"),   
+                "Bulat Bawah": st.column_config.NumberColumn(format="%d"),  
             }
         )
 
-    # --- Isi Konten Setiap Tab ---
+    # Pembuatan Masing-Masing Tab Sesuai Dengan Kernel Tertentu
 
     with tab1:
         show_top_n(best_sellers_df, 'Predicted_Linear', 'Floor_Linear', 'Linear')
-
     with tab2:
         show_top_n(best_sellers_df, 'Predicted_Poly_Tuned', 'Floor_Poly', 'Poly Tuned')
-
     with tab3:
         show_top_n(best_sellers_df, 'Predicted_RBF_Tuned', 'Floor_RBF', 'RBF Tuned')
-
     with tab4:
         show_top_n(best_sellers_df, 'Predicted_Sigmoid_Tuned', 'Floor_Sigmoid', 'Sigmoid Tuned')
 
-    st.success("Analisis Top 10 Selesai.")
-
     # Visualisasi Hasil Kinerja dari Kernel SVM
+    st.markdown("---")
     st.subheader("Visualisasi Hasil Kinerja dari Kernel SVM")
 
     X_test_original = scaler_X.inverse_transform(X_test_scaled)
