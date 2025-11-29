@@ -240,29 +240,29 @@ if uploaded_file is not None:
 
     # Helper function untuk menampilkan dataframe dengan format yang bagus
     def show_top_n(df, pred_col, floor_col, kernel_name):
-    # Sort data
-    top_n_df = df.sort_values(by=pred_col, ascending=False).head(TOP_N)
+        # Sort data
+        top_n_df = df.sort_values(by=pred_col, ascending=False).head(TOP_N)
     
-    # Select columns
-    display_df = top_n_df[['Product Name', 'Actual_Quantity', pred_col, floor_col]].copy()
+        # Select columns
+        display_df = top_n_df[['Product Name', 'Actual_Quantity', pred_col, floor_col]].copy()
     
-    # Rename columns untuk tampilan
-    display_df.columns = ['Nama Produk', 'Actual', 'Prediksi', 'Bulat Bawah']
+        # Rename columns untuk tampilan
+        display_df.columns = ['Nama Produk', 'Actual', 'Prediksi', 'Bulat Bawah']
     
-    # Tampilkan Header
-    st.subheader(f"SVR {kernel_name} Kernel (Top {TOP_N})")
+        # Tampilkan Header
+        st.subheader(f"SVR {kernel_name} Kernel (Top {TOP_N})")
     
-    # Tampilkan Dataframe dengan formatting angka
-    st.dataframe(
-        display_df,
-        use_container_width=True,
-        hide_index=True,
-        column_config={
-            "Actual": st.column_config.NumberColumn(format="%d"),       # Bulat
-            "Prediksi": st.column_config.NumberColumn(format="%.2f"),   # 2 desimal
-            "Bulat Bawah": st.column_config.NumberColumn(format="%d"),  # Bulat
-        }
-    )
+        # Tampilkan Dataframe dengan formatting angka
+        st.dataframe(
+            display_df,
+            use_container_width=True,
+            hide_index=True,
+            column_config={
+                "Actual": st.column_config.NumberColumn(format="%d"),       # Bulat
+                "Prediksi": st.column_config.NumberColumn(format="%.2f"),   # 2 desimal
+                "Bulat Bawah": st.column_config.NumberColumn(format="%d"),  # Bulat
+            }
+        )
 
     # --- Isi Konten Setiap Tab ---
 
