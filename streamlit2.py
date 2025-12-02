@@ -69,7 +69,7 @@ if uploaded_file is not None:
         Count_Orders=('Order ID', 'nunique')
     ).reset_index()
 
-    product_stats = product_stats.replace([np.inf, -np.inf], np.nan).dropna()
+
 
 
 # -----------------------------
