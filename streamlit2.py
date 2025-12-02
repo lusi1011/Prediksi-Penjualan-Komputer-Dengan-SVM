@@ -49,8 +49,8 @@ if uploaded_file is not None:
 
     # (Bersihkan nilai-nilai yang tidak terisi)
     df_filtered = df_filtered.dropna(axis=1, how='all')
-    df_filtered['Returns'] = df_filtered['Returns'].fillna(0)
     df.rename(columns={'Row ID+O6G3A1:R6': 'Row ID'}, inplace=True)
+    df_filtered['Returns'] = df_filtered['Returns'].fillna(0)
     df_filtered.columns = df_filtered.columns.str.strip()
 
     st.subheader("Kutipan Dataset Setelah Disaring")
