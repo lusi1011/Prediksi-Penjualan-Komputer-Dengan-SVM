@@ -71,9 +71,6 @@ if uploaded_file is not None:
 
     product_stats = product_stats.replace([np.inf, -np.inf], np.nan).dropna()
 
-    st.subheader("Kutipan Statistik Produk")
-    st.dataframe(product_stats)
-
 
 # -----------------------------
 # Penentuan Sampel Data
