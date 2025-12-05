@@ -84,6 +84,8 @@ if uploaded_file is not None:
     y_products = product_stats_sampled['Total_Quantity']
     feature_cols = ['Mean_Sales', 'Mean_Profit', 'Count_Orders']
 
+    st.write(f"Jumlah sampel data: **{len(product_stats_sampled)}** dari total **{len(product_stats)}**")
+
 
 # -----------------------------
 # Pemisahan Data
