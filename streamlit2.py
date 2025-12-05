@@ -89,7 +89,7 @@ if uploaded_file is not None:
 # Pemisahan Data
 # -----------------------------
     X_train_full, X_test_full, y_train, y_test = train_test_split(
-        X_products, y_products, test_size=0.2, random_state=42
+        X_products, y_products, test_size=0.5, random_state=42
     )
     X_test = X_test_full[feature_cols]
     X_train = X_train_full[feature_cols]
