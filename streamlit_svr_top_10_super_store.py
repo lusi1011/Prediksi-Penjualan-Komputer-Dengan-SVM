@@ -33,7 +33,7 @@ df = load_data()
 le = LabelEncoder()
 df['Product_Encoded'] = le.fit_transform(df['Product Name'])
 
-X = df[['Product_Encoded', 'Sales', 'Discount', 'Profit']]
+X = df[['Product_Encoded', 'Sales', 'Profit']]
 y = df['Quantity']
 
 X_train, X_test, y_train, y_test = train_test_split(
