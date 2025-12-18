@@ -220,7 +220,7 @@ if uploaded_file is not None:
     # Analisis TOP 10 Barang Terlaris
     # Ambil Nama Produk dan Integrasikan dengan Prediksi
     best_sellers_df = X_test_full['Product Name'].reset_index(drop=True).to_frame()
-    best_sellers_df['Actual_Quantity'] = y_train.values
+    best_sellers_df['Actual_Quantity'] = y_test.values
     best_sellers_df['Predicted_Linear'] = predictions_df['Predicted_Linear'].values
     best_sellers_df['Predicted_Poly_Tuned'] = predictions_df['Predicted_Poly_Tuned'].values
     best_sellers_df['Predicted_RBF_Tuned'] = predictions_df['Predicted_RBF_Tuned'].values
