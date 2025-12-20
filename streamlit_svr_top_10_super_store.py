@@ -36,7 +36,7 @@ if uploaded_file is not None:
     df = pd.read_csv(uploaded_file)
 
     st.subheader("Kutipan Dataset Penjualan Komponen Komputer")
-    st.dataframe(df.head(10))
+    st.dataframe(df.head())
 
 # -----------------------------
 # Pemrosesan Awal Data
@@ -54,7 +54,7 @@ if uploaded_file is not None:
     df_filtered.columns = df_filtered.columns.str.strip()
 
     st.subheader("Kutipan Dataset Setelah Disaring")
-    st.dataframe(df_filtered.head(10))
+    st.dataframe(df_filtered.head())
     st.write(f"Jumlah data setelah disaring: **{len(df_filtered)}** dari total **{len(df)}**")
 
     if df_filtered.empty:
@@ -68,7 +68,6 @@ if uploaded_file is not None:
         Mean_Profit=('Profit', 'mean'),
         Count_Orders=('Order ID', 'nunique')
     ).reset_index()
-
 
 # -----------------------------
 # Penentuan Sampel Data
@@ -155,82 +154,149 @@ if uploaded_file is not None:
         'Linear': linear_param,
         'Poly_Tuned': poly_param,
         'RBF_Tuned': rbf_param,
-        'Sigmoid_Tuned': sigmoid_param,
+        'Sigmoid_Tuned': sigmoid_param
     }
 
 # -----------------------------
-# Visualisasi Matriks Korelasi
+# Visualisasi Model
 # -----------------------------
-st.markdown("---")
-col1, col2 = st.columns([1, 2])
-
-with col1:
-    st.subheader("Matriks Korelasi")
-    fig_corr, ax_corr = plt.subplots()
+    # Matriks Korelasi
     corr = product_stats[['Total_Quantity', 'Mean_Sales', 'Mean_Profit', 'Count_Orders']].corr()
-    sns.heatmap(corr, annot=True, cmap='coolwarm', fmt=".2f", ax=ax_corr)
-    st.pyplot(fig_corr)
 
-# -----------------------------
-# Evaluasi Kinerja
-# -----------------------------
-results = []
-pred_results = {}
+    fig, ax = plt.subplots(figsize=(4,4))
+    im = ax.imshow(corr, cmap='coolwarm')  # Menggunakan colormap yang lebih menarik
 
-for name, model in model_dict.items():
-    y_pred_scaled = model.predict(X_test_selected_all)
-    y_pred = scaler_y.inverse_transform(y_pred_scaled.reshape(-1, 1)).flatten()
-    
-    results.append({
-        'Model': name,
-        'R2': r2_score(y_test, y_pred),
-        'MSE': mean_squared_error(y_test, y_pred),
-        'MAPE': mean_absolute_percentage_error(y_test, y_pred)
-    })
-    pred_results[name] = y_pred
+    # Tambahkan Label Kolom dan Baris
+    ax.set_xticks(np.arange(len(corr.columns)))
+    ax.set_yticks(np.arange(len(corr.columns)))
+    ax.set_xticklabels(corr.columns)
+    ax.set_yticklabels(corr.columns)
 
-results_df = pd.DataFrame(results).sort_values(by='R2', ascending=False)
-with col2:
-    st.subheader("Hasil Kinerja Kernel SVM")
-    st.dataframe(results_df.style.highlight_max(subset=['R2'], color='#90ee90'))
+    # Rotasi Label X
+    plt.setp(ax.get_xticklabels(), rotation=45, ha="right", rotation_mode="anchor", fontsize=8)
 
-# -----------------------------
-# TOP 10 Analisis
-# -----------------------------
-st.markdown("---")
-st.subheader("🏆 Top 10 Produk Berdasarkan Prediksi")
-tabs = st.tabs(list(model_dict.keys()))
+    for i in range(len(corr.columns)):
+        for j in range(len(corr.columns)):
+            value = corr.iloc[i, j]
+            text_color = "white" if abs(value) > 0.6 else "black"
+            ax.text(j, i, round(value, 2), ha='center', va='center', color=text_color, fontsize=6)
 
-for i, name in enumerate(model_dict.keys()):
-    with tabs[i]:
-        top_df = pd.DataFrame({
-            'Nama Produk': product_names_test,
-            'Aktual': y_test.values,
-            'Prediksi': pred_results[name],
-            'Bulat Bawah': np.floor(pred_results[name])
-        }).sort_values(by='Prediksi', ascending=False).head(10)
-        st.table(top_df)
+    # Judul dan Colorbar, serta Tampilan Plot Matriks
+    st.markdown("---")
+    ax.set_title("Matriks Korelasi", pad=20, fontsize=12)
+    colorbar = plt.colorbar(im, ax=ax, label='Koefisien Korelasi', shrink=0.5)
+    colorbar.set_label('Koefisien Korelasi', fontsize=8)
 
-# -----------------------------
-# Visualisasi Kurva Regresi
-# -----------------------------
-st.markdown("---")
-st.subheader(f"Visualisasi Regresi (Fitur Terbaik: {selected_feature_name})")
+    st.pyplot(fig)
 
-fig_reg, axes = plt.subplots(1, 4, figsize=(20, 5), sharey=True)
-x_plot_scaled = np.linspace(X_test_sel.min(), X_test_sel.max(), 100).reshape(-1, 1)
-x_plot_orig = (x_plot_scaled * scaler_X.scale_[selected_idx]) + scaler_X.mean_[selected_idx]
+    # Hasil Kinerja dari Kernel SVM
+    results = []
+    predictions_df = pd.DataFrame({'Actual': y_test})
+    for name, model in model_dict.items():
+        y_pred_scaled = model.predict(X_test_selected_all)
+        y_pred = scaler_y.inverse_transform(y_pred_scaled.reshape(-1, 1)).flatten()
+        mse = mean_squared_error(y_test, y_pred)
+        r2 = r2_score(y_test, y_pred)
+        mape = mean_absolute_percentage_error(y_test, y_pred)
+        predictions_df[f'Predicted_{name}'] = y_pred
+        results.append({'Model': name, 'R2': r2, 'MSE': mse, 'MAPE': mape})
 
-for i, (name, model) in enumerate(model_dict.items()):
-    y_plot_scaled = model.predict(x_plot_scaled)
-    y_plot_orig = scaler_y.inverse_transform(y_plot_scaled.reshape(-1, 1)).flatten()
-    
-    axes[i].scatter(X_test_orig_df[selected_feature_name], y_test, color='red', alpha=0.5, label='Actual')
-    axes[i].plot(x_plot_orig, y_plot_orig, color='black', lw=2, label='Prediction')
-    axes[i].set_title(name)
-    axes[i].set_xlabel(selected_feature_name)
-    if i == 0: axes[i].set_ylabel("Total Quantity")
-    axes[i].legend()
+    results_df = pd.DataFrame(results).sort_values(by='R2', ascending=False)
+    st.markdown("---")
+    st.subheader("Hasil Kinerja dari Kernel SVM")
+    st.dataframe(
+        results_df.style.highlight_max(axis=0, subset=['R2'], color='lightgreen')
+                         .highlight_min(axis=0, subset=['MSE', 'MAPE'], color='lightgreen')
+    )
 
-st.pyplot(fig_reg)
-st.success("Analisis Selesai!")
+    st.write("**Keterangan Bagi Kernel Nonlinear:**")
+    st.write(f"**Parameter Poly Tuned:** {poly_param}")
+    st.write(f"**Parameter RBF Tuned:** {rbf_param}")
+    st.write(f"**Parameter Sigmoid Tuned:** {sigmoid_param}")
+
+    # Analisis TOP 10 Barang Terlaris
+    # Ambil Nama Produk dan Integrasikan dengan Prediksi
+    best_sellers_df = X_test_full['Product Name'].reset_index(drop=True).to_frame()
+    best_sellers_df['Actual_Quantity'] = y_test.values
+    best_sellers_df['Predicted_Linear'] = predictions_df['Predicted_Linear'].values
+    best_sellers_df['Predicted_Poly_Tuned'] = predictions_df['Predicted_Poly_Tuned'].values
+    best_sellers_df['Predicted_RBF_Tuned'] = predictions_df['Predicted_RBF_Tuned'].values
+    best_sellers_df['Predicted_Sigmoid_Tuned'] = predictions_df['Predicted_Sigmoid_Tuned'].values
+
+    best_sellers_df['Floor_Linear'] = np.floor(best_sellers_df['Predicted_Linear'])
+    best_sellers_df['Floor_Poly'] = np.floor(best_sellers_df['Predicted_Poly_Tuned'])
+    best_sellers_df['Floor_RBF'] = np.floor(best_sellers_df['Predicted_RBF_Tuned'])
+    best_sellers_df['Floor_Sigmoid'] = np.floor(best_sellers_df['Predicted_Sigmoid_Tuned'])
+
+    st.markdown("---")
+    st.title("🏆 Analisis TOP 10 Barang Terlaris")
+    st.markdown("Tampilan **10 Produk terlaris** berdasarkan prediksi Quantity melalui kernel regresi SVM.")
+
+    tab1, tab2, tab3, tab4 = st.tabs(["Linear", "Poly Tuned", "RBF Tuned", "Sigmoid Tuned"])
+    TOP_N = 10
+
+    def show_top_n(df, pred_col, floor_col, kernel_name):
+        top_n_df = df.sort_values(by=pred_col, ascending=False).head(TOP_N)
+        display_df = top_n_df[['Product Name', 'Actual_Quantity', pred_col, floor_col]].copy()
+        display_df.columns = ['Nama Produk', 'Aktual', 'Prediksi', 'Bulat Bawah']
+        st.subheader(f"SVR {kernel_name} Kernel (Top {TOP_N})")
+        st.dataframe(
+            display_df,
+            use_container_width=True,
+            hide_index=True,
+            column_config={
+                "Actual": st.column_config.NumberColumn(format="%d"),
+                "Prediksi": st.column_config.NumberColumn(format="%.2f"),
+                "Bulat Bawah": st.column_config.NumberColumn(format="%d"),
+            }
+        )
+
+    with tab1:
+        show_top_n(best_sellers_df, 'Predicted_Linear', 'Floor_Linear', 'Linear')
+    with tab2:
+        show_top_n(best_sellers_df, 'Predicted_Poly_Tuned', 'Floor_Poly', 'Poly Tuned')
+    with tab3:
+        show_top_n(best_sellers_df, 'Predicted_RBF_Tuned', 'Floor_RBF', 'RBF Tuned')
+    with tab4:
+        show_top_n(best_sellers_df, 'Predicted_Sigmoid_Tuned', 'Floor_Sigmoid', 'Sigmoid Tuned')
+
+    # Visualisasi Hasil Kinerja dari Kernel SVM
+    st.markdown("---")
+    st.subheader("Visualisasi Hasil Kinerja dari Kernel SVM")
+
+    X_test_original = scaler_X.inverse_transform(X_test_scaled)
+    X_test_selected_original_plot = X_test_original[:, selected_indices[0]]
+
+    fig, axes = plt.subplots(1, 4, figsize=(20, 5), sharey=True)
+    sns.set_style("whitegrid")
+
+    for i, (name, model) in enumerate(model_dict.items()):
+        ax = axes[i]
+
+        x_min_orig = X_test_selected_original_plot.min()
+        x_max_orig = X_test_selected_original_plot.max()
+        x_smooth_orig = np.linspace(x_min_orig, x_max_orig, 300)
+
+        selected_feature_index = selected_indices[0]
+        mean_feat = scaler_X.mean_[selected_feature_index]
+        std_feat = scaler_X.scale_[selected_feature_index]
+        x_smooth_scaled = (x_smooth_orig - mean_feat) / std_feat
+        x_smooth_scaled_reshaped = x_smooth_scaled.reshape(-1, 1)
+
+        y_smooth_pred_scaled = model.predict(x_smooth_scaled_reshaped)
+        y_smooth_pred_orig = scaler_y.inverse_transform(y_smooth_pred_scaled.reshape(-1, 1)).flatten()
+
+        ax.scatter(X_test_selected_original_plot, y_test, color='red', label='Aktual', alpha=0.6)
+        ax.plot(x_smooth_orig, y_smooth_pred_orig, color='black', linewidth=2, label=f'Prediksi {name}')
+
+        ax.set_title(name)
+        ax.legend()
+        ax.grid(True, linestyle='--', alpha=0.7)
+        ax.set_xlabel(selected_feature_name_for_plot)
+        if i == 0:
+            ax.set_ylabel('Total Quantity (Prediksi vs Aktual)')
+
+    plt.tight_layout()
+    st.pyplot(fig)
+
+    st.success("Model Regresi SVM berhasil diproses dan divisualisasikan.")
