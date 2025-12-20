@@ -71,63 +71,92 @@ if uploaded_file is not None:
 
 
 # -----------------------------
-# Penentuan Sampel & Fitur
+# Penentuan Sampel Data
 # -----------------------------
-X_products = product_stats[['Mean_Sales', 'Mean_Profit', 'Count_Orders']]
-y_products = product_stats['Total_Quantity']
-feature_cols = ['Mean_Sales', 'Mean_Profit', 'Count_Orders']
+    st.subheader("Random Sampling Data")
+    product_stats_sampled = product_stats.sample(n=20, random_state=42)
+    st.write("Contoh sampel untuk analisis:")
+    st.dataframe(product_stats_sampled)
 
+    X_products = product_stats_sampled[['Product Name', 'Mean_Sales', 'Mean_Profit', 'Count_Orders']]
+    y_products = product_stats_sampled['Total_Quantity']
+    feature_cols = ['Mean_Sales', 'Mean_Profit', 'Count_Orders']
+
+    st.write(f"Jumlah sampel data: **{len(product_stats_sampled)}** dari total **{len(product_stats)}**")
+
+
+# -----------------------------
 # Pemisahan Data
-X_train, X_test, y_train, y_test = train_test_split(
-    X_products, y_products, test_size=0.5, random_state=42
-)
+# -----------------------------
+    X_train_full, X_test_full, y_train, y_test = train_test_split(
+        X_products, y_products, test_size=0.2, random_state=42
+    )
+    X_test = X_test_full[feature_cols]
+    X_train = X_train_full[feature_cols]
 
-# Simpan salinan X_test sebelum scaling untuk visualisasi akhir
-X_test_orig_df = X_test.copy()
-# Ambil Product Name untuk tabel TOP 10
-test_indices = X_test.index
-product_names_test = product_stats.loc[test_indices, 'Product Name'].values
 
 # -----------------------------
-# Standarisasi & Seleksi Fitur
+# Standarisasi Data
 # -----------------------------
-scaler_X = StandardScaler()
-X_train_scaled = scaler_X.fit_transform(X_train)
-X_test_scaled = scaler_X.transform(X_test)
+    scaler_X = StandardScaler()
+    X_train_scaled = scaler_X.fit_transform(X_train)
+    X_test_scaled = scaler_X.transform(X_test)
+    scaler_y = StandardScaler()
+    y_train_scaled = scaler_y.fit_transform(y_train.values.reshape(-1, 1)).flatten()
 
-scaler_y = StandardScaler()
-y_train_scaled = scaler_y.fit_transform(y_train.values.reshape(-1, 1)).flatten()
-
-# Cari 1 fitur terbaik untuk visualisasi regresi 2D nanti
-selector = SelectKBest(score_func=f_regression, k=1)
-selector.fit(X_train_scaled, y_train_scaled)
-selected_idx = selector.get_support(indices=True)[0]
-selected_feature_name = feature_cols[selected_idx]
-
-# Gunakan SEMUA fitur untuk pelatihan model (X_train_scaled), 
-# namun untuk plot regresi di bawah, kita akan gunakan subset fitur terbaik.
-X_train_sel = X_train_scaled[:, [selected_idx]]
-X_test_sel = X_test_scaled[:, [selected_idx]]
 
 # -----------------------------
-# Training Model (Grid Search)
+# Penentuan Fitur Paling Efektif
 # -----------------------------
-with st.spinner("Melatih model SVM dengan Grid Search..."):
-    # RBF
-    gs_rbf = GridSearchCV(SVR(kernel='rbf'), {'C': [1, 10], 'gamma': [0.1, 1]}, cv=3).fit(X_train_sel, y_train_scaled)
-    # Poly
-    gs_poly = GridSearchCV(SVR(kernel='poly'), {'C': [1, 10], 'degree': [2, 3]}, cv=3).fit(X_train_sel, y_train_scaled)
-    # Sigmoid
-    gs_sig = GridSearchCV(SVR(kernel='sigmoid'), {'C': [1, 10], 'gamma': [0.1, 1]}, cv=3).fit(X_train_sel, y_train_scaled)
-    # Linear
-    model_lin = SVR(kernel='linear', C=1).fit(X_train_sel, y_train_scaled)
+    selector = SelectKBest(score_func=f_regression, k=1)
+    X_train_selected_all = selector.fit_transform(X_train_scaled, y_train_scaled)
+    X_test_selected_all = selector.transform(X_test_scaled)
+    selected_indices = selector.get_support(indices=True)
+    selected_feature_names = [feature_cols[i] for i in selected_indices]
+    selected_feature_name_for_plot = selected_feature_names[0]
 
-model_dict = {
-    'Linear': model_lin,
-    'Poly_Tuned': gs_poly.best_estimator_,
-    'RBF_Tuned': gs_rbf.best_estimator_,
-    'Sigmoid_Tuned': gs_sig.best_estimator_
-}
+    st.success("Data berhasil diproses dan siap untuk pelatihan model.")
+
+
+# -----------------------------
+# Implementasi Parameter Kernel SVM Dengan Uji Paling Efektif
+# -----------------------------
+    with st.spinner("Sedang melatih model regresi SVM..."):
+        param_grid_rbf = {
+            'C': [0.1, 1, 10],
+            'gamma': [0.1, 1]
+        }
+        grid_search_rbf = GridSearchCV(SVR(kernel='rbf'), param_grid_rbf, cv=3, scoring='r2', n_jobs=-1)
+        grid_search_rbf.fit(X_train_selected_all, y_train_scaled)
+        rbf_param = grid_search_rbf.best_estimator_
+
+        param_grid_poly = {
+            'C': [0.1, 1, 10],
+            'gamma': [0.1, 1, 10],
+            'coef0': [0, 1, 2],
+            'degree': [2, 3]
+        }
+        grid_search_poly = GridSearchCV(SVR(kernel='poly'), param_grid_poly, cv=3, scoring='r2', n_jobs=-1)
+        grid_search_poly.fit(X_train_selected_all, y_train_scaled)
+        poly_param = grid_search_poly.best_estimator_
+
+        param_grid_sigmoid = {
+            'C': [0.1, 1, 10],
+            'gamma': [0.1, 1, 10],
+            'coef0': [-2, -1, 0, 1, 2]
+        }
+        grid_search_sigmoid = GridSearchCV(SVR(kernel='sigmoid'), param_grid_sigmoid, cv=3, scoring='r2', n_jobs=-1)
+        grid_search_sigmoid.fit(X_train_selected_all, y_train_scaled)
+        sigmoid_param = grid_search_sigmoid.best_estimator_
+
+        linear_param = SVR(kernel='linear', C=10, gamma='scale').fit(X_train_selected_all, y_train_scaled)
+
+    model_dict = {
+        'Linear': linear_param,
+        'Poly_Tuned': poly_param.best_estimator,
+        'RBF_Tuned': rbf_param.best_estimator,
+        'Sigmoid_Tuned': sigmoid_param.best_estimator,
+    }
 
 # -----------------------------
 # Visualisasi Matriks Korelasi
