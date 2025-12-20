@@ -160,59 +160,38 @@ if uploaded_file is not None:
 # -----------------------------
 # Visualisasi Model
 # -----------------------------
-    # Matriks Korelasi
-    corr = product_stats[['Total_Quantity', 'Mean_Sales', 'Mean_Profit', 'Count_Orders']].corr()
+    col1, col2 = st.columns([1, 2])
+    with col1:
+        st.subheader("Matriks Korelasi")
+        fig_corr, ax_corr = plt.subplots()
+        # Matriks Korelasi
+        corr = product_stats[['Total_Quantity', 'Mean_Sales', 'Mean_Profit', 'Count_Orders']].corr()
+        sns.heatmap(corr, annot=True, cmap='coolwarm', fmt=".2f", ax=ax_corr)
+        st.pyplot(fig_corr)
 
-    fig, ax = plt.subplots(figsize=(4,4))
-    im = ax.imshow(corr, cmap='coolwarm')  # Menggunakan colormap yang lebih menarik
-
-    # Tambahkan Label Kolom dan Baris
-    ax.set_xticks(np.arange(len(corr.columns)))
-    ax.set_yticks(np.arange(len(corr.columns)))
-    ax.set_xticklabels(corr.columns)
-    ax.set_yticklabels(corr.columns)
-
-    # Rotasi Label X
-    plt.setp(ax.get_xticklabels(), rotation=45, ha="right", rotation_mode="anchor", fontsize=8)
-
-    for i in range(len(corr.columns)):
-        for j in range(len(corr.columns)):
-            value = corr.iloc[i, j]
-            text_color = "white" if abs(value) > 0.6 else "black"
-            ax.text(j, i, round(value, 2), ha='center', va='center', color=text_color, fontsize=6)
-
-    # Judul dan Colorbar, serta Tampilan Plot Matriks
-    st.markdown("---")
-    ax.set_title("Matriks Korelasi", pad=20, fontsize=12)
-    colorbar = plt.colorbar(im, ax=ax, label='Koefisien Korelasi', shrink=0.5)
-    colorbar.set_label('Koefisien Korelasi', fontsize=8)
-
-    st.pyplot(fig)
-
-    # Hasil Kinerja dari Kernel SVM
-    results = []
-    predictions_df = pd.DataFrame({'Actual': y_test})
-    for name, model in model_dict.items():
+        # Evaluasi Kinerja
+        results = []
+        pred_results = {}
+        for name, model in model_dict.items():
         y_pred_scaled = model.predict(X_test_selected_all)
         y_pred = scaler_y.inverse_transform(y_pred_scaled.reshape(-1, 1)).flatten()
-        mse = mean_squared_error(y_test, y_pred)
-        r2 = r2_score(y_test, y_pred)
-        mape = mean_absolute_percentage_error(y_test, y_pred)
-        predictions_df[f'Predicted_{name}'] = y_pred
-        results.append({'Model': name, 'R2': r2, 'MSE': mse, 'MAPE': mape})
+        results.append({
+            'Model': name,
+            'R2': r2_score(y_test, y_pred),
+            'MSE': mean_squared_error(y_test, y_pred),
+            'MAPE': mean_absolute_percentage_error(y_test, y_pred)
+        })
 
+    pred_results[name] = y_pred
     results_df = pd.DataFrame(results).sort_values(by='R2', ascending=False)
-    st.markdown("---")
-    st.subheader("Hasil Kinerja dari Kernel SVM")
-    st.dataframe(
-        results_df.style.highlight_max(axis=0, subset=['R2'], color='lightgreen')
-                         .highlight_min(axis=0, subset=['MSE', 'MAPE'], color='lightgreen')
-    )
 
-    st.write("**Keterangan Bagi Kernel Nonlinear:**")
-    st.write(f"**Parameter Poly Tuned:** {poly_param}")
-    st.write(f"**Parameter RBF Tuned:** {rbf_param}")
-    st.write(f"**Parameter Sigmoid Tuned:** {sigmoid_param}")
+    with col2:
+        st.subheader("Hasil Kinerja Kernel SVM")
+        st.dataframe(results_df.style.highlight_max(subset=['R2'], color='#90ee90'))
+        st.write("**Keterangan Bagi Kernel Nonlinear:**")
+        st.write(f"**Parameter Poly Tuned:** {poly_param}")
+        st.write(f"**Parameter RBF Tuned:** {rbf_param}")
+        st.write(f"**Parameter Sigmoid Tuned:** {sigmoid_param}")
 
     # Analisis TOP 10 Barang Terlaris
     # Ambil Nama Produk dan Integrasikan dengan Prediksi
