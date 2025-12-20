@@ -178,7 +178,7 @@ results = []
 pred_results = {}
 
 for name, model in model_dict.items():
-    y_pred_scaled = model.predict(X_test_sel)
+    y_pred_scaled = model.predict(X_test_selected_all)
     y_pred = scaler_y.inverse_transform(y_pred_scaled.reshape(-1, 1)).flatten()
     
     results.append({
