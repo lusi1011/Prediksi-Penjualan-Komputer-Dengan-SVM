@@ -79,7 +79,7 @@ feature_cols = ['Mean_Sales', 'Mean_Profit', 'Count_Orders']
 
 # Pemisahan Data
 X_train, X_test, y_train, y_test = train_test_split(
-    X_products, y_products, test_size=0.2, random_state=42
+    X_products, y_products, test_size=1, random_state=42
 )
 
 # Simpan salinan X_test sebelum scaling untuk visualisasi akhir
