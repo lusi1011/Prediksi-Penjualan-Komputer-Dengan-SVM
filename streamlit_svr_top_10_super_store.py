@@ -153,9 +153,9 @@ if uploaded_file is not None:
 
     model_dict = {
         'Linear': linear_param,
-        'Poly_Tuned': poly_param.best_estimator,
-        'RBF_Tuned': rbf_param.best_estimator,
-        'Sigmoid_Tuned': sigmoid_param.best_estimator,
+        'Poly_Tuned': poly_param,
+        'RBF_Tuned': rbf_param,
+        'Sigmoid_Tuned': sigmoid_param,
     }
 
 # -----------------------------
