@@ -306,7 +306,7 @@ if uploaded_file is not None:
         y_smooth_pred_orig = scaler_y.inverse_transform(y_smooth_pred_scaled.reshape(-1, 1)).flatten()
 
         # Plot titik-titik data TRAINING (Aktual) vs Garis Prediksi
-        ax.scatter(X_train_selected_original_plot, y_train, color='blue', label='Aktual (Train)', alpha=0.6) # Ganti warna jadi biru agar beda
+        ax.scatter(X_train_selected_original_plot, y_train, color='red', label='Aktual (Train)', alpha=0.6) # Ganti warna jadi biru agar beda
         ax.plot(x_smooth_orig, y_smooth_pred_orig, color='black', linewidth=2, label=f'Prediksi {name}')
 
         ax.set_title(name)
