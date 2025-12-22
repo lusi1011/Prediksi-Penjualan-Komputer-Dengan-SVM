@@ -36,7 +36,7 @@ if uploaded_file is not None:
     df = pd.read_csv(uploaded_file)
 
     st.subheader("Kutipan Dataset Penjualan Komponen Komputer")
-    st.dataframe(df.head())
+    st.dataframe(df)
 
 # -----------------------------
 # Pemrosesan Awal Data
@@ -54,7 +54,7 @@ if uploaded_file is not None:
     df_filtered.columns = df_filtered.columns.str.strip()
 
     st.subheader("Kutipan Dataset Setelah Disaring")
-    st.dataframe(df_filtered.head())
+    st.dataframe(df_filtered)
     st.write(f"Jumlah data setelah disaring: **{len(df_filtered)}** dari total **{len(df)}**")
 
     if df_filtered.empty:
