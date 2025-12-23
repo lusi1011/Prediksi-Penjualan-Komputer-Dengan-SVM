@@ -121,14 +121,6 @@ if uploaded_file is not None:
 # Implementasi Parameter Kernel SVM Dengan Uji Paling Efektif
 # -----------------------------
     with st.spinner("Sedang melatih model regresi SVM..."):
-        param_grid_rbf = {
-            'C': [0.1, 1, 10],
-            'gamma': [0.1, 1]
-        }
-        grid_search_rbf = GridSearchCV(SVR(kernel='rbf'), param_grid_rbf, cv=3, scoring='r2', n_jobs=-1)
-        grid_search_rbf.fit(X_train_selected_all, y_train_scaled)
-        rbf_param = grid_search_rbf.best_estimator_
-
         param_grid_poly = {
             'C': [0.1, 1, 10],
             'gamma': [0.1, 1, 10],
@@ -138,6 +130,14 @@ if uploaded_file is not None:
         grid_search_poly = GridSearchCV(SVR(kernel='poly'), param_grid_poly, cv=3, scoring='r2', n_jobs=-1)
         grid_search_poly.fit(X_train_selected_all, y_train_scaled)
         poly_param = grid_search_poly.best_estimator_
+
+        param_grid_rbf = {
+            'C': [0.1, 1, 10],
+            'gamma': [0.1, 1]
+        }
+        grid_search_rbf = GridSearchCV(SVR(kernel='rbf'), param_grid_rbf, cv=3, scoring='r2', n_jobs=-1)
+        grid_search_rbf.fit(X_train_selected_all, y_train_scaled)
+        rbf_param = grid_search_rbf.best_estimator_
 
         param_grid_sigmoid = {
             'C': [0.1, 1, 10],
