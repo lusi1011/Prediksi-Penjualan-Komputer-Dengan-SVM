@@ -161,7 +161,7 @@ if uploaded_file is not None:
 # Visualisasi Model
 # -----------------------------
     # Matriks Korelasi
-    corr = product_stats[['Total_Quantity', 'Mean_Sales', 'Mean_Profit', 'Count_Orders']].corr()
+    corr = product_stats_sampled[['Total_Quantity', 'Mean_Sales', 'Mean_Profit', 'Count_Orders']].corr()
 
     fig, ax = plt.subplots(figsize=(4,4))
     im = ax.imshow(corr, cmap='coolwarm')  # Menggunakan colormap yang lebih menarik
