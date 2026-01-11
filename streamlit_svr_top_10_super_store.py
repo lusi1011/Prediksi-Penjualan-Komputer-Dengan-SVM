@@ -267,7 +267,7 @@ if uploaded_file is not None:
     X_test_original = scaler_X.inverse_transform(X_test_scaled)
     X_test_selected_original_plot = X_test_original[:, selected_indices[0]]
 
-    fig, axes = plt.subplots(2, 2, figsize=(20, 5), sharey=True)
+    fig, axes = plt.subplots(2, 2, figsize=(12, 10), sharey=True)
     sns.set_style("whitegrid")
 
     for i, (name, model) in enumerate(model_dict.items()):
@@ -293,8 +293,10 @@ if uploaded_file is not None:
         ax.legend()
         ax.grid(True, linestyle='--', alpha=0.7)
         ax.set_xlabel(selected_feature_name_for_plot)
-        if i == 0:
-            ax.set_ylabel('Total Quantity (Prediksi vs Aktual)')
+        if i >= 2: # Subplot bawah
+            ax.set_xlabel(selected_feature_name_for_plot)
+        if i % 2 == 0: # Subplot kiri
+            ax.set_ylabel('Total Quantity')
 
     plt.tight_layout()
     st.pyplot(fig)
