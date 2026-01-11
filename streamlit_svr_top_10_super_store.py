@@ -263,42 +263,56 @@ if uploaded_file is not None:
     # Visualisasi Hasil Kinerja dari Kernel SVM
     st.markdown("---")
     st.subheader("Visualisasi Hasil Kinerja dari Kernel SVM")
-
+    
     X_test_original = scaler_X.inverse_transform(X_test_scaled)
     X_test_selected_original_plot = X_test_original[:, selected_indices[0]]
-
-    fig, axes = plt.subplots(2, 2, figsize=(12, 10), sharey=True)
+    
+    # Membuat grid 2x2
+    fig, axes = plt.subplots(2, 2, figsize=(14, 12)) 
     sns.set_style("whitegrid")
-
+    
+    # PENTING: Ratakan axes menjadi 1D array agar bisa di-loop dengan i (0 sampai 3)
+    axes_flat = axes.flatten()
+    
     for i, (name, model) in enumerate(model_dict.items()):
-        ax = axes[i]
-
+        ax = axes_flat[i] # Mengambil subplot berdasarkan urutan flat
+    
+        # Membuat garis prediksi halus (smooth line)
         x_min_orig = X_test_selected_original_plot.min()
         x_max_orig = X_test_selected_original_plot.max()
         x_smooth_orig = np.linspace(x_min_orig, x_max_orig, 300)
-
+    
+        # Transformasi balik untuk plotting
         selected_feature_index = selected_indices[0]
         mean_feat = scaler_X.mean_[selected_feature_index]
         std_feat = scaler_X.scale_[selected_feature_index]
         x_smooth_scaled = (x_smooth_orig - mean_feat) / std_feat
-        x_smooth_scaled_reshaped = x_smooth_scaled.reshape(-1, 1)
-
-        y_smooth_pred_scaled = model.predict(x_smooth_scaled_reshaped)
+        
+        # Prediksi menggunakan model
+        y_smooth_pred_scaled = model.predict(x_smooth_scaled.reshape(-1, 1))
         y_smooth_pred_orig = scaler_y.inverse_transform(y_smooth_pred_scaled.reshape(-1, 1)).flatten()
-
-        ax.scatter(X_test_selected_original_plot, y_test, color='red', label='Aktual', alpha=0.5, s=20)
-        ax.plot(x_smooth_orig, y_smooth_pred_orig, color='black', linewidth=2, label=f'Prediksi {name}')
-
-        ax.set_title(name)
-        ax.legend()
-        ax.grid(True, linestyle='--', alpha=0.7)
-        ax.set_xlabel(selected_feature_name_for_plot)
-        if i >= 2: # Subplot bawah
-            ax.set_xlabel(selected_feature_name_for_plot)
-        if i % 2 == 0: # Subplot kiri
-            ax.set_ylabel('Total Quantity')
-
+    
+        # Plotting Data Aktual
+        ax.scatter(X_test_selected_original_plot, y_test, color='red', label='Aktual', alpha=0.4, s=30)
+        
+        # Plotting Garis Prediksi
+        ax.plot(x_smooth_orig, y_smooth_pred_orig, color='black', linewidth=2.5, label=f'Model {name}')
+    
+        # Pengaturan Estetika per Subplot
+        ax.set_title(f"Kernel: {name}", fontsize=14, fontweight='bold')
+        ax.legend(loc='upper left')
+        ax.grid(True, linestyle='--', alpha=0.6)
+        
+        # Hanya tampilkan label sumbu Y di kolom kiri (0 dan 2)
+        if i % 2 == 0:
+            ax.set_ylabel('Total Quantity (Unit)', fontsize=10)
+        
+        # Hanya tampilkan label sumbu X di baris bawah (2 dan 3)
+        if i >= 2:
+            ax.set_xlabel(selected_feature_name_for_plot, fontsize=10)
+    
+    # Mengatur jarak antar grafik agar tidak tumpang tindih
     plt.tight_layout()
     st.pyplot(fig)
-
-    st.success("Model Regresi SVM berhasil diproses dan divisualisasikan.")
+    
+    st.success("Model Regresi SVM berhasil diproses dan divisualisasikan dalam layout 2x2.")
