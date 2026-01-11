@@ -315,4 +315,4 @@ if uploaded_file is not None:
     plt.tight_layout()
     st.pyplot(fig)
     
-    st.success("Model Regresi SVM berhasil diproses dan divisualisasikan dalam layout 2x2.")
+    st.success("Model Regresi SVM berhasil diproses dan divisualisasikan.")
