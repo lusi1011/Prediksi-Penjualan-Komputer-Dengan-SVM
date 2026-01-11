@@ -267,7 +267,7 @@ if uploaded_file is not None:
     X_test_original = scaler_X.inverse_transform(X_test_scaled)
     X_test_selected_original_plot = X_test_original[:, selected_indices[0]]
 
-    fig, axes = plt.subplots(1, 4, figsize=(20, 5), sharey=True)
+    fig, axes = plt.subplots(2, 2, figsize=(20, 5), sharey=True)
     sns.set_style("whitegrid")
 
     for i, (name, model) in enumerate(model_dict.items()):
