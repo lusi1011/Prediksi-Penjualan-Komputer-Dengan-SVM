@@ -52,7 +52,7 @@ if uploaded_file is not None:
 
     st.subheader("Kutipan Dataset Penjualan Komponen Komputer")
     st.dataframe(df_filtered)
-    st.write(f"Jumlah data setelah disaring: **{len(df_filtered)}** dari total **{len(df)}**")
+    st.write(f"Total data: **{len(df_filtered)}**")
 
     if df_filtered.empty:
         st.error("Data berubah menjadi kosong. Tidak mampu dilanjutkan.")
