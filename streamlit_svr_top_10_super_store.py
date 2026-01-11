@@ -286,7 +286,7 @@ if uploaded_file is not None:
         y_smooth_pred_scaled = model.predict(x_smooth_scaled_reshaped)
         y_smooth_pred_orig = scaler_y.inverse_transform(y_smooth_pred_scaled.reshape(-1, 1)).flatten()
 
-        ax.scatter(X_test_selected_original_plot, y_test, color='red', label='Aktual', alpha=0.6)
+        ax.scatter(X_test_selected_original_plot, y_test, color='red', label='Aktual', alpha=0.5, s=20)
         ax.plot(x_smooth_orig, y_smooth_pred_orig, color='black', linewidth=2, label=f'Prediksi {name}')
 
         ax.set_title(name)
