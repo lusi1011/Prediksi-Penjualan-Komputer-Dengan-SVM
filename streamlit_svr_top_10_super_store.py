@@ -70,7 +70,7 @@ if uploaded_file is not None:
 # Penentuan Sampel Data
 # -----------------------------
     st.subheader("Random Sampling Data")
-    product_stats_sampled = product_stats.sample(n=len(product_stats), random_state=42)
+    product_stats_sampled = product_stats.sample(n=40, random_state=42)
     st.write("Contoh sampel untuk analisis:")
     st.dataframe(product_stats_sampled)
 
@@ -264,7 +264,6 @@ if uploaded_file is not None:
     X_test_original = scaler_X.inverse_transform(X_test_scaled)
     X_test_selected_original_plot = X_test_original[:, selected_indices[0]]
     
-    # Membuat grid 2x2
     fig, axes = plt.subplots(2, 2, figsize=(14, 12)) 
     sns.set_style("whitegrid")
     
