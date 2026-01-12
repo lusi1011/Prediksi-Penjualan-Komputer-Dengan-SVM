@@ -313,9 +313,9 @@ if uploaded_file is not None:
     st.pyplot(fig)
 
     st.write("**Grafik tersebut dijelaskan secara keseluruhan bahwa:**")
-    st.write("**Kernel Linear**, "membentuk grafik yang konstan dan minim kesalahan dalam memprediksi kelarisan penjualan komponen komputer.")
-    st.write("**Kernel Polinomial**", "membentuk grafik yang sedikit melengkung dan fleksibel terhadap data yang dipertimbangkan.")
-    st.write("**Kernel RBF**", "membentuk grafik yang sedikit melengkung dan berusaha menengah di antara kerumunan data, serta akurat dalam mengikuti tren data dari bawah ke atas.")
-    st.write("**Kernel Sigmoid**", "membentuk grafik yang lurus dan kemudian melengkung ke atas, serta hasil kinerjanya sangat rendah dalam memprediksi kelarisan tersebut.")
+    st.write("**Kernel Linear** membentuk grafik yang konstan dan minim kesalahan dalam memprediksi kelarisan penjualan komponen komputer.")
+    st.write("**Kernel Polinomial** membentuk grafik yang sedikit melengkung dan fleksibel terhadap data yang dipertimbangkan.")
+    st.write("**Kernel RBF** membentuk grafik yang sedikit melengkung dan berusaha menengah di antara kerumunan data, serta akurat dalam mengikuti tren data dari bawah ke atas.")
+    st.write("**Kernel Sigmoid** membentuk grafik yang lurus dan kemudian melengkung ke atas, serta hasil kinerjanya sangat rendah dalam memprediksi kelarisan tersebut.")
     
     st.success("Model Regresi SVM berhasil diproses dan divisualisasikan.")
