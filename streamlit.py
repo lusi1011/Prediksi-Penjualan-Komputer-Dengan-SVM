@@ -118,7 +118,7 @@ if uploaded_file is not None:
         best_sigmoid_svr = grid_search_sigmoid.best_estimator_
         best_sigmoid_params = best_sigmoid_svr.get_params()
 
-        model_linear = SVR(kernel='linear', C=10, gamma='scale').fit(X_train_selected_all, y_train_scaled)
+        model_linear = SVR(kernel='linear', C=10).fit(X_train_selected_all, y_train_scaled)
 
     model_dict = {
         'Linear': model_linear,
