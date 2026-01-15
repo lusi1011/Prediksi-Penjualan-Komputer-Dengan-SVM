@@ -170,7 +170,7 @@ if uploaded_file is not None:
     ax.set_yticklabels(corr.columns)
 
     # Rotasi Label X
-    plt.setp(ax.get_xticklabels(), rotation=135, ha="right", rotation_mode="anchor", fontsize=8)
+    plt.setp(ax.get_xticklabels(), rotation=45, ha="right", rotation_mode="anchor", fontsize=8)
 
     for i in range(len(corr.columns)):
         for j in range(len(corr.columns)):
