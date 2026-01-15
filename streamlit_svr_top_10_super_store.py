@@ -276,7 +276,7 @@ if uploaded_file is not None:
         # Membuat garis prediksi halus (smooth line)
         x_min_orig = X_test_selected_original_plot.min()
         x_max_orig = X_test_selected_original_plot.max()
-        x_smooth_orig = np.linspace(x_min_orig, x_max_orig, 300)
+        x_smooth_orig = np.linspace(x_min_orig, x_max_orig, 200)
     
         # Transformasi balik untuk plotting
         selected_feature_index = selected_indices[0]
